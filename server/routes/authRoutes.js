@@ -1,12 +1,14 @@
 const express = require("express");
 const {
-  registerTenant,
-  registerLandlord,
+  registerNewUser,
+  activateTenantAccount,
+  activateLandlordAccount,
 } = require("../controllers/authController");
 
 const router = express.Router();
 
-router.post("/register-tenant", registerTenant);
-router.post("/register-landlord", registerLandlord);
+router.post("/register-new-user", registerNewUser);
+router.post("/activate-tenant-account", activateTenantAccount);
+router.post("/activate-landlord-account", activateLandlordAccount);
 
 module.exports = router;
