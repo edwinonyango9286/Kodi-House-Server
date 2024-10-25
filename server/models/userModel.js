@@ -35,6 +35,12 @@ var userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    refreshToken: {
+      type: String,
+      require: false,
+      unique: true,
+      trim: true,
+    },
     passwordChagedAt: Date,
     passwordResetToken: String,
     passwordResetExpires: Date,
