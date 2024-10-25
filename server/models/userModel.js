@@ -22,7 +22,7 @@ var userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["tenant", "landlord"],
+      enum: ["tenant", "landlord", "admin"],
     },
     avatar: {
       type: String,

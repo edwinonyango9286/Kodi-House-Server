@@ -6,7 +6,7 @@ const generateRefreshToken = (id) => {
       { id, iat: Math.floor(Date.now() / 1000) },
       process.env.REFRESH_TOKEN_SECRET,
       {
-        expiresIn: "3d",
+        expiresIn: "40m",
       }
     );
   } catch (error) {
