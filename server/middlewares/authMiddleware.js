@@ -31,7 +31,7 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
       error.name === "JsonWebTokenError"
     ) {
       try {
-        const newAccessToken = await handleRefreshToken(req);
+        const newAccessToken = await handleRefreshToken(req, res);
         req.headers.authorization = `Bearer ${newAccessToken}`;
 
         next();

@@ -10,6 +10,7 @@ const ejs = require("ejs");
 const { generateAccessToken } = require("../config/accessToken");
 const { generateRefreshToken } = require("../config/refreshToken");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 
 //create a tenant
 const registerNewUser = asyncHandler(async (req, res) => {
@@ -61,15 +62,9 @@ const registerNewUser = asyncHandler(async (req, res) => {
     data,
   });
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
-    message: `Please check your email:${newUser.email} to activate your account`,
-    activationToken: activationToken.token,
-    newUser: {
-      name: newUser.name,
-      email: newUser.email,
-      password: newUser.password,
-    },
+    message: `An account activation code has been sent to ${newUser.email}. Please check it.`,
   });
 });
 
@@ -127,10 +122,9 @@ const activateTenantAccount = asyncHandler(async (req, res) => {
     password,
     role: "tenant",
   });
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     message: "Your account has been activated. Proceed to log in.",
-    user,
   });
 });
 
@@ -170,10 +164,9 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
     role: "landlord",
   });
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     message: "Your account has been activated. Proceed to log in.",
-    user,
   });
 });
 
@@ -214,10 +207,9 @@ const activateAdminAccount = asyncHandler(async (req, res) => {
     role: "admin",
   });
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     message: "Your account has been activated. Proceed to log in.",
-    user,
   });
 });
 
@@ -264,7 +256,7 @@ const loginTenant = asyncHandler(async (req, res) => {
     maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     sameSite: "strict",
   });
-  res.status(200).json({
+  return res.status(200).json({
     _id: user._id,
     name: user.name,
     email: user.email,
@@ -319,7 +311,7 @@ const loginLandlord = asyncHandler(async (req, res) => {
     maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     sameSite: "strict",
   });
-  res.status(200).json({
+  return res.status(200).json({
     _id: user._id,
     name: user.name,
     email: user.email,
@@ -374,7 +366,7 @@ const loginAdmin = asyncHandler(async (req, res) => {
     maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     sameSite: "strict",
   });
-  res.status(200).json({
+  return res.status(200).json({
     _id: user._id,
     name: user.name,
     email: user.email,
@@ -383,25 +375,39 @@ const loginAdmin = asyncHandler(async (req, res) => {
   });
 });
 
-const handleRefreshToken = async (req) => {
+const handleRefreshToken = asyncHandler(async (req, res) => {
   const cookie = req.cookies;
   if (!cookie?.refreshToken) {
-    throw new Error("Refresh token missing. Please log in again.");
+    return res
+      .status(401)
+      .json({ message: "You're not logged in. Please log in to continue." });
   }
+
   const refreshToken = cookie.refreshToken;
   const user = await User.findOne({ refreshToken });
   if (!user) {
-    throw new Error("User not found. Please log in again.");
+    return res
+      .status(401)
+      .json({ message: "You're not logged in. Please log in to continue." });
   }
-  const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-  if (user.id !== decoded.id) {
-    throw new Error("Invalid refresh token. Please log in again.");
-  }
-  const newAccessToken = generateAccessToken(user._id);
-  req.user = user;
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    if (user.id !== decoded.id) {
+      return res
+        .status(403)
+        .json({ message: "You're not logged in. Please log in to continue." });
+    }
 
-  return newAccessToken;
-};
+    const newAccessToken = generateAccessToken(user._id);
+    req.user = user;
+
+    return newAccessToken;
+  } catch (error) {
+    return res.status(403).json({
+      message: "You're not logged in. Please log in to continue.",
+    });
+  }
+});
 
 const updatePassword = asyncHandler(async (req, res) => {
   const { _id } = req.user;
@@ -436,37 +442,34 @@ const updatePassword = asyncHandler(async (req, res) => {
         "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
     });
   }
-
   if (password !== confirmPassword) {
     return res
       .status(400)
       .json({ message: "Password and confirm password values do not match." });
   }
-
   const user = await User.findById(_id);
   if (!user) {
     return res.status(404).json({
       message: "We couldn't find an account associated with this id.",
     });
   }
-
   if (await user.isPasswordMatched(password)) {
     return res.status(400).json({
       message:
-        "Please choose a new password that is different from your old one.",
+        "Please choose a new password that is different from the old one.",
     });
   }
-
   user.password = password;
   await user.save();
 
-  res.status(200).json({
+  return res.status(200).json({
     message:
       "Your password has been update. Proceed to log in with the new password.",
   });
 });
 
-const forgotPasswordToken = asyncHandler(async (req, res) => {
+// send anemail to the user with the password resent link and a token
+const passwordResetToken = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
     return res
@@ -492,19 +495,29 @@ const forgotPasswordToken = asyncHandler(async (req, res) => {
   await user.save();
   const data = { user: { name: user.name }, token };
   const html = await ejs.renderFile(
-    path.join(__dirname, "../mail-templates/reset-password-mail.ejs"),
+    path.join(__dirname, "../mail-templates/reset-password-token-mail.ejs"),
     data
   );
   await sendMail({
     email: user.email,
     subject: "Password Reset Link",
-    template: "reset-password-mail.ejs",
+    template: "reset-password-token-mail.ejs",
     data,
+  });
+  console.log(token);
+  return res.status(200).json({
+    message: `A password reset link has been sent to ${user.email}. Please check it.`,
   });
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
-  const { password } = req.body;
+  const { password, confirmPassword } = req.body;
+
+  if (!password || !confirmPassword) {
+    return res
+      .status(400)
+      .json({ message: "Please provide all the required fields." });
+  }
   try {
     validatePassword(password);
   } catch (error) {
@@ -514,6 +527,20 @@ const resetPassword = asyncHandler(async (req, res) => {
     });
   }
 
+  try {
+    validatePassword(confirmPassword);
+  } catch (error) {
+    return res.status(400).json({
+      message:
+        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res
+      .status(400)
+      .json({ message: "Password and confirm password values do not match." });
+  }
   const { token } = req.params;
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
@@ -532,12 +559,10 @@ const resetPassword = asyncHandler(async (req, res) => {
   user.password = await bcrypt.hash(password, 10);
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
-
+  
   await user.save();
-
-  res.json({
-    message: "Password has been successfully reset. Proceed to login",
-    user: { email: user.email, id: user._id },
+  return res.json({
+    message: "Your password has been successfully reset. Proceed to login.",
   });
 });
 
@@ -550,7 +575,7 @@ module.exports = {
   loginLandlord,
   loginAdmin,
   updatePassword,
-  forgotPasswordToken,
+  passwordResetToken,
   resetPassword,
   handleRefreshToken,
 };
