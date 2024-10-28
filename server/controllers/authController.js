@@ -9,7 +9,6 @@ const sendMail = require("../utils/sendMails");
 const ejs = require("ejs");
 const { generateAccessToken } = require("../config/accessToken");
 const { generateRefreshToken } = require("../config/refreshToken");
-const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
 //create a tenant
@@ -526,7 +525,6 @@ const resetPassword = asyncHandler(async (req, res) => {
         "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
     });
   }
-
   try {
     validatePassword(confirmPassword);
   } catch (error) {
@@ -548,7 +546,6 @@ const resetPassword = asyncHandler(async (req, res) => {
     passwordResetToken: hashedToken,
     passwordResetExpires: { $gt: Date.now() },
   });
-
   if (!user) {
     return res.status(400).json({
       message:
@@ -556,10 +553,16 @@ const resetPassword = asyncHandler(async (req, res) => {
     });
   }
 
-  user.password = await bcrypt.hash(password, 10);
+  if (await user.isPasswordMatched(password)) {
+    return res.status(400).json({
+      message:
+        "Please choose a new password that is different from the old one.",
+    });
+  }
+
+  user.password = password;
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
-  
   await user.save();
   return res.json({
     message: "Your password has been successfully reset. Proceed to login.",
