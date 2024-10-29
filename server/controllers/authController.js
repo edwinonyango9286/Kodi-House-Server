@@ -64,6 +64,8 @@ const registerNewUser = asyncHandler(async (req, res) => {
   return res.status(201).json({
     success: true,
     message: `An account activation code has been sent to ${newUser.email}. Please check it.`,
+    newUser,
+    activationToken: activationToken.token,
   });
 });
 
@@ -92,7 +94,6 @@ const activateTenantAccount = asyncHandler(async (req, res) => {
       message: "Please provide all the required fields.",
     });
   }
-
   let newUser;
   try {
     newUser = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
@@ -224,7 +225,6 @@ const loginTenant = asyncHandler(async (req, res) => {
       .status(400)
       .json({ message: "Please provide a valid email address." });
   }
-
   try {
     validatePassword(password);
   } catch (error) {
@@ -240,7 +240,6 @@ const loginTenant = asyncHandler(async (req, res) => {
         "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
     });
   }
-
   if (user && !(await user.isPasswordMatched(password))) {
     res.status(403).json({ message: "Wrong email or password." });
   }
@@ -276,7 +275,6 @@ const loginLandlord = asyncHandler(async (req, res) => {
       .status(400)
       .json({ message: "Please provide a valid email address." });
   }
-
   try {
     validatePassword(password);
   } catch (error) {
@@ -467,7 +465,7 @@ const updatePassword = asyncHandler(async (req, res) => {
   });
 });
 
-// send anemail to the user with the password resent link and a token
+// send an email to the user with the password resent link and a token
 const passwordResetToken = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
@@ -533,7 +531,6 @@ const resetPassword = asyncHandler(async (req, res) => {
         "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
     });
   }
-
   if (password !== confirmPassword) {
     return res
       .status(400)
@@ -552,7 +549,6 @@ const resetPassword = asyncHandler(async (req, res) => {
         "Something went wrong. Please try initiating the password reset process again.",
     });
   }
-
   if (await user.isPasswordMatched(password)) {
     return res.status(400).json({
       message:
@@ -568,6 +564,7 @@ const resetPassword = asyncHandler(async (req, res) => {
     message: "Your password has been successfully reset. Proceed to login.",
   });
 });
+
 
 module.exports = {
   registerNewUser,
