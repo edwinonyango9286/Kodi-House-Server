@@ -86,14 +86,14 @@ const createActivationToken = (user) => {
   return { token, activationCode };
 };
 
-const activateTenantAccount = asyncHandler(async (req, res) => {
+const activateAdminAccount = asyncHandler(async (req, res) => {
   const { activationToken, activationCode } = req.body;
-
   if (!activationToken || !activationCode) {
     return res.status(400).json({
       message: "Please provide all the required fields.",
     });
   }
+
   let newUser;
   try {
     newUser = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
@@ -103,9 +103,8 @@ const activateTenantAccount = asyncHandler(async (req, res) => {
     }
     return res.status(400).json({ message: "Invalid activation token." });
   }
-
   if (newUser.activationCode !== activationCode) {
-    return res.status(400).json({ message: "Invalid activation code." });
+    return res.status(400).json({ message: "Invalid activation code" });
   }
   const { name, email, password } = newUser.user;
   const existingUser = await User.findOne({ email });
@@ -116,12 +115,14 @@ const activateTenantAccount = asyncHandler(async (req, res) => {
         "An account with this email address already exist. Login instead.",
     });
   }
+
   const user = await User.create({
     name,
     email,
     password,
-    role: "tenant",
+    role: "admin",
   });
+
   return res.status(201).json({
     success: true,
     message: "Your account has been activated. Proceed to log in.",
@@ -170,14 +171,14 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
   });
 });
 
-const activateAdminAccount = asyncHandler(async (req, res) => {
+const activateTenantAccount = asyncHandler(async (req, res) => {
   const { activationToken, activationCode } = req.body;
+
   if (!activationToken || !activationCode) {
     return res.status(400).json({
       message: "Please provide all the required fields.",
     });
   }
-
   let newUser;
   try {
     newUser = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
@@ -187,8 +188,9 @@ const activateAdminAccount = asyncHandler(async (req, res) => {
     }
     return res.status(400).json({ message: "Invalid activation token." });
   }
+
   if (newUser.activationCode !== activationCode) {
-    return res.status(400).json({ message: "Invalid activation code" });
+    return res.status(400).json({ message: "Invalid activation code." });
   }
   const { name, email, password } = newUser.user;
   const existingUser = await User.findOne({ email });
@@ -199,21 +201,19 @@ const activateAdminAccount = asyncHandler(async (req, res) => {
         "An account with this email address already exist. Login instead.",
     });
   }
-
   const user = await User.create({
     name,
     email,
     password,
-    role: "admin",
+    role: "tenant",
   });
-
   return res.status(201).json({
     success: true,
     message: "Your account has been activated. Proceed to log in.",
   });
 });
 
-const loginTenant = asyncHandler(async (req, res) => {
+const loginAdmin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res
@@ -225,6 +225,7 @@ const loginTenant = asyncHandler(async (req, res) => {
       .status(400)
       .json({ message: "Please provide a valid email address." });
   }
+
   try {
     validatePassword(password);
   } catch (error) {
@@ -233,31 +234,38 @@ const loginTenant = asyncHandler(async (req, res) => {
         "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
     });
   }
+
   const user = await User.findOne({ email });
+
   if (!user) {
     return res.status(403).json({
       message:
         "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
     });
   }
+  if (user && user.role !== "admin") {
+    res.status(401).json({ message: "Not authorised." });
+  }
   if (user && !(await user.isPasswordMatched(password))) {
     res.status(403).json({ message: "Wrong email or password." });
   }
-
-  const accessToken = generateAccessToken(user._id);
+  user.tokenVersion += 1;
+  await user.save();
+  const accessToken = generateAccessToken(user._id, user.tokenVersion);
   const refreshToken = generateRefreshToken(user._id);
   user.refreshToken = refreshToken;
   await user.save();
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     sameSite: "strict",
+    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
   });
   return res.status(200).json({
     _id: user._id,
     name: user.name,
     email: user.email,
+    role: user.role,
     avatar: user.avatar,
     accessToken: accessToken,
   });
@@ -298,26 +306,30 @@ const loginLandlord = asyncHandler(async (req, res) => {
   if (user && !(await user.isPasswordMatched(password))) {
     res.status(403).json({ message: "Wrong email or password." });
   }
-  const accessToken = generateAccessToken(user._id);
+
+  user.tokenVersion += 1;
+  await user.save();
+  const accessToken = generateAccessToken(user._id, user.tokenVersion);
   const refreshToken = generateRefreshToken(user._id);
   user.refreshToken = refreshToken;
   await user.save();
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     sameSite: "strict",
+    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
   });
   return res.status(200).json({
     _id: user._id,
     name: user.name,
     email: user.email,
+    role: user.role,
     avatar: user.avatar,
     accessToken: accessToken,
   });
 });
 
-const loginAdmin = asyncHandler(async (req, res) => {
+const loginTenant = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res
@@ -329,7 +341,6 @@ const loginAdmin = asyncHandler(async (req, res) => {
       .status(400)
       .json({ message: "Please provide a valid email address." });
   }
-
   try {
     validatePassword(password);
   } catch (error) {
@@ -338,35 +349,34 @@ const loginAdmin = asyncHandler(async (req, res) => {
         "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
     });
   }
-
   const user = await User.findOne({ email });
-
   if (!user) {
     return res.status(403).json({
       message:
         "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
     });
   }
-  if (user && user.role !== "admin") {
-    res.status(401).json({ message: "Not authorised." });
-  }
   if (user && !(await user.isPasswordMatched(password))) {
     res.status(403).json({ message: "Wrong email or password." });
   }
-  const accessToken = generateAccessToken(user._id);
+
+  user.tokenVersion += 1;
+  await user.save();
+  const accessToken = generateAccessToken(user._id, user.tokenVersion);
   const refreshToken = generateRefreshToken(user._id);
   user.refreshToken = refreshToken;
   await user.save();
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     sameSite: "strict",
+    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
   });
   return res.status(200).json({
     _id: user._id,
     name: user.name,
     email: user.email,
+    role: user.role,
     avatar: user.avatar,
     accessToken: accessToken,
   });
@@ -565,6 +575,38 @@ const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
+const logout = asyncHandler(async (req, res) => {
+  const cookie = req.cookies;
+  if (!cookie.refreshToken) {
+    return res
+      .status(401)
+      .json({ message: "We could not find refresh token in cookies." });
+  }
+  const refreshToken = cookie.refreshToken;
+  const user = await User.findOne({ refreshToken });
+  if (!user) {
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+    return res
+      .status(200)
+      .json({ message: "You have successfully logged out." });
+  }
+  await User.findOneAndUpdate(
+    { refreshToken },
+    {
+      refreshToken: "",
+    }
+  );
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+  return res.status(200).json({ message: "You have successfully logged out." });
+});
 
 module.exports = {
   registerNewUser,
@@ -578,4 +620,5 @@ module.exports = {
   passwordResetToken,
   resetPassword,
   handleRefreshToken,
+  logout,
 };

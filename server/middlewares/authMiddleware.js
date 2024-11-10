@@ -8,17 +8,15 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
     !req?.headers?.authorization ||
     !req.headers.authorization.startsWith("Bearer")
   ) {
-    return res
-      .status(401)
-      .json({ message: "You're not logged in. Please log in to continue." });
+    return res.status(401).json({
+      message: "You're not logged in. Please log in to continue.",
+    });
   }
-
   let accessToken = req.headers.authorization.split(" ")[1];
-
   try {
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
     const user = await User.findById(decoded.id);
-    if (!user) {
+    if (!user || user.tokenVersion !== decoded.tokenVersion) {
       return res
         .status(401)
         .json({ message: "You're not logged in. Please log in to continue." });
@@ -37,8 +35,7 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
         next();
       } catch (err) {
         return res.status(403).json({
-          message:
-            err.message || "You're not logged in. Please log in to continue.",
+          message: "You're not logged in. Please log in to continue.",
         });
       }
     } else {
@@ -64,21 +61,6 @@ const isTenant = asyncHandler(async (req, res, next) => {
   next();
 });
 
-const isLandlord = asyncHandler(async (req, res, next) => {
-  const { email } = req.user;
-  const landlord = await User.findOne({ email });
-  if (!landlord) {
-    return res.status(404).json({
-      message:
-        "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
-    });
-  }
-  if (landlord.role !== "landlord") {
-    return res.status(403).json({ message: "Not authorized." });
-  }
-  next();
-});
-
 const isAdmin = asyncHandler(async (req, res, next) => {
   const { email } = req.user;
   const adminUser = await User.findOne({ email });
@@ -93,6 +75,21 @@ const isAdmin = asyncHandler(async (req, res, next) => {
     return res.status(403).json({ message: "Not authorized." });
   }
 
+  next();
+});
+
+const isLandlord = asyncHandler(async (req, res, next) => {
+  const { email } = req.user;
+  const landlord = await User.findOne({ email });
+  if (!landlord) {
+    return res.status(404).json({
+      message:
+        "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
+    });
+  }
+  if (landlord.role !== "landlord") {
+    return res.status(403).json({ message: "Not authorized." });
+  }
   next();
 });
 

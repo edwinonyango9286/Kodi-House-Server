@@ -41,6 +41,10 @@ var userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
     passwordChagedAt: Date,
     passwordResetToken: String,
     passwordResetExpires: Date,

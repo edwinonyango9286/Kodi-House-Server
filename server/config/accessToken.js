@@ -1,12 +1,12 @@
 const jwt = require("jsonwebtoken");
 
-const generateAccessToken = (id) => {
+const generateAccessToken = (id, tokenVersion) => {
   try {
     return jwt.sign(
-      { id, iat: Math.floor(Date.now() / 1000) },
+      { id, tokenVersion, iat: Math.floor(Date.now() / 1000) },
       process.env.ACCESS_TOKEN_SECRET,
       {
-        expiresIn: "2m",
+        expiresIn: "15m",
       }
     );
   } catch (error) {

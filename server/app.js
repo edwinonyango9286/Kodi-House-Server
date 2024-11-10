@@ -1,9 +1,15 @@
 const express = require("express");
 const app = express({ limit: "50mb" });
+const session = require("express-session");
 const dotenv = require("dotenv");
 dotenv.config();
-
+const passport = require("passport");
+const authRouter = require("./routes/authRoutes");
+const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
+const morgan = require("morgan");
 const cors = require("cors");
+
 const origins = [
   process.env.ORIGIN_LOCALHOST_3000,
   process.env.ORIGIN_LOCALHOST_3001,
@@ -25,16 +31,23 @@ app.use(
   })
 );
 
-const bodyParser = require("body-parser");
-const cookieParser = require("cookie-parser");
-const morgan = require("morgan");
+app.use(
+  session({
+    secret: process.env.SESSION_SECERET_KEY,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false },//should be set to true if you are using https for example in production.
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ limit: "5mb", extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-const authRouter = require("./routes/authRoutes");
 app.use("/api/auth", authRouter);
 
 module.exports = app;
