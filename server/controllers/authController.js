@@ -271,6 +271,7 @@ const loginAdmin = asyncHandler(async (req, res) => {
   });
 });
 
+
 const loginLandlord = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -359,7 +360,6 @@ const loginTenant = asyncHandler(async (req, res) => {
   if (user && !(await user.isPasswordMatched(password))) {
     res.status(403).json({ message: "Wrong email or password." });
   }
-
   user.tokenVersion += 1;
   await user.save();
   const accessToken = generateAccessToken(user._id, user.tokenVersion);
