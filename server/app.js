@@ -13,6 +13,7 @@ const cors = require("cors");
 const origins = [
   process.env.ORIGIN_LOCALHOST_3000,
   process.env.ORIGIN_LOCALHOST_3001,
+  process.env.KODI_HOUSE_LANDLORDAPP_PRODUCTION_URL,
 ];
 
 app.use(
