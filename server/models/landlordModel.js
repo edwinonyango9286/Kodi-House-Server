@@ -2,28 +2,56 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
-var userSchema = new mongoose.Schema(
+const landlordSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
       index: true,
       minlength: 2,
-      maxlength: 100,
+      maxlength: 32,
+      trim:true,
     },
     email: {
       type: String,
       required: true,
       unique: true,
       index: true,
-      minlength: 6,
-      maxlength: 254,
+      minlength: 2,
+      maxlength: 32,
       lowercase: true,
+      trim:true,
     },
+
     role: {
       type: String,
-      enum: ["tenant", "landlord", "admin"],
+      default: "landlord",
     },
+
+    users: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        default: [],
+        ref: "User",
+      },
+    ],
+
+    properties: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        default: [],
+        ref: "Property",
+      },
+    ],
+
+    tenants: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        default: [],
+        ref: "Tenant",
+      },
+    ],
+
     avatar: {
       type: String,
       default:
@@ -54,7 +82,7 @@ var userSchema = new mongoose.Schema(
   }
 );
 
-userSchema.pre("save", async function (next) {
+landlordSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
     return next();
   }
@@ -63,11 +91,11 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-userSchema.methods.isPasswordMatched = async function (enteredPassword) {
+landlordSchema.methods.isPasswordMatched = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-userSchema.methods.createPasswordResetToken = async function () {
+landlordSchema.methods.createPasswordResetToken = async function () {
   const resetToken = crypto.randomBytes(32).toString("hex");
   this.passwordResetToken = crypto
     .createHash("sha256")
@@ -77,4 +105,5 @@ userSchema.methods.createPasswordResetToken = async function () {
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
   return resetToken;
 };
-module.exports = mongoose.model("User", userSchema);
+
+module.exports = mongoose.model("Landlord", landlordSchema);

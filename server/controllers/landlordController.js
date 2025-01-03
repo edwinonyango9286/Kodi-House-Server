@@ -1,7 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const emailValidator = require("email-validator");
-const User = require("../models/userModel");
 const validatePassword = require("../utils/validatePassword");
 const jwt = require("jsonwebtoken");
 const path = require("path");
@@ -10,72 +9,69 @@ const ejs = require("ejs");
 const { generateAccessToken } = require("../config/accessToken");
 const { generateRefreshToken } = require("../config/refreshToken");
 const crypto = require("crypto");
+const Landlord = require("../models/landlordModel");
 
-//create a tenant
-const registerNewUser = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) {
-    return res
-      .status(400)
-      .json({ message: "Please provide all the required fileds." });
-  }
-  if (!emailValidator.validate(email)) {
-    return res
-      .status(400)
-      .json({ message: "Please provide a valid email address." });
-  }
+//register a landlord
+const registerNewLandlord = asyncHandler(async (req, res) => {
   try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all the required fields." });
+    }
+    if (!emailValidator.validate(email)) {
+      return res
+        .status(400)
+        .json({ message: "Please provide a valid email address." });
+    }
     validatePassword(password);
+
+    // check if the landlord already exist in the database using email.
+    const landlord = await Landlord.findOne({ email });
+    if (landlord) {
+      return res.status(409).json({
+        message:
+          "An account with this email address already exists. Please use a different email address or log in to your existing account.",
+      });
+    }
+    const newLandlord = {
+      name,
+      email,
+      password,
+    };
+
+    const activationToken = createActivationToken(newLandlord);
+    const activationCode = activationToken.activationCode;
+    const data = { newLandlord: { name: newLandlord?.name }, activationCode };
+
+    const html = await ejs.renderFile(
+      path.join(__dirname, "../mail-templates/landlord-activation-mail.ejs"),
+      data
+    );
+    await sendMail({
+      email: newLandlord?.email,
+      subject: "Account Activation",
+      template: "landlord-activation-mail.ejs",
+      data,
+    });
+    return res.status(200).json({
+      success: true,
+      message: `An account activation code has been sent to ${newLandlord?.email}. Please check it.`,
+      activationToken: activationToken?.token,
+    });
   } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
+    throw new Error(error);
   }
-
-  const existingUser = await User.findOne({ email });
-  if (existingUser) {
-    return res.status(409).json({
-      message: "An account with this email address already exist.",
-    });
-  }
-  const newUser = {
-    name,
-    email,
-    password,
-  };
-
-  const activationToken = createActivationToken(newUser);
-  const activationCode = activationToken.activationCode;
-  const data = { newUser: { name: newUser.name }, activationCode };
-
-  const html = await ejs.renderFile(
-    path.join(__dirname, "../mail-templates/activation-mail.ejs"),
-    data
-  );
-
-  await sendMail({
-    email: newUser.email,
-    subject: "Account Activation",
-    template: "activation-mail.ejs",
-    data,
-  });
-
-  return res.status(201).json({
-    success: true,
-    message: `An account activation code has been sent to ${newUser.email}. Please check it.`,
-    newUser,
-    activationToken: activationToken.token,
-  });
 });
 
-//create activation token
-const createActivationToken = (user) => {
-  const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
+//create landlord activation token
 
+const createActivationToken = (landlord) => {
+  const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
   const token = jwt.sign(
     {
-      user,
+      landlord,
       activationCode,
     },
     process.env.ACTIVATION_SECRET,
@@ -86,131 +82,57 @@ const createActivationToken = (user) => {
   return { token, activationCode };
 };
 
-const activateAdminAccount = asyncHandler(async (req, res) => {
-  const { activationToken, activationCode } = req.body;
-  if (!activationToken || !activationCode) {
-    return res.status(400).json({
-      message: "Please provide all the required fields.",
-    });
-  }
 
-  let newUser;
-  try {
-    newUser = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
-  } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(400).json({ message: "Activation token has expired." });
-    }
-    return res.status(400).json({ message: "Invalid activation token." });
-  }
-  if (newUser.activationCode !== activationCode) {
-    return res.status(400).json({ message: "Invalid activation code" });
-  }
-  const { name, email, password } = newUser.user;
-  const existingUser = await User.findOne({ email });
-
-  if (existingUser) {
-    return res.status(409).json({
-      message:
-        "An account with this email address already exist. Login instead.",
-    });
-  }
-
-  const user = await User.create({
-    name,
-    email,
-    password,
-    role: "admin",
-  });
-
-  return res.status(201).json({
-    success: true,
-    message: "Your account has been activated. Proceed to log in.",
-  });
-});
 
 const activateLandlordAccount = asyncHandler(async (req, res) => {
-  const { activationToken, activationCode } = req.body;
-  if (!activationToken || !activationCode) {
-    return res.status(400).json({
-      message: "Please provide all the required fields.",
-    });
-  }
-
-  let newUser;
   try {
-    newUser = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
-  } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(400).json({ message: "Activation token has expired." });
+    const { activationToken, activationCode } = req.body;
+    if (!activationToken || !activationCode) {
+      return res.status(400).json({
+        message: "Please provide all the required fields.",
+      });
     }
-    return res.status(400).json({ message: "Invalid activation token." });
-  }
-  if (newUser.activationCode !== activationCode) {
-    return res.status(400).json({ message: "Invalid activation code" });
-  }
-  const { name, email, password } = newUser.user;
-  const existingUser = await User.findOne({ email });
 
-  if (existingUser) {
-    return res.status(409).json({
-      message:
-        "An account with this email address already exist. Login instead.",
-    });
-  }
-  const user = await User.create({
-    name,
-    email,
-    password,
-    role: "landlord",
-  });
 
-  return res.status(201).json({
-    success: true,
-    message: "Your account has been activated. Proceed to log in.",
-  });
-});
+   let newLandlord;
+   try {
+     newLandlord = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
+   } catch (err) {
+     if (err.name === "TokenExpiredError") {
+       return res
+         .status(400)
+         .json({ message: "Activation token has expired." });
+     }
+     return res.status(400).json({ message: "Invalid activation token." });
+   }
 
-const activateTenantAccount = asyncHandler(async (req, res) => {
-  const { activationToken, activationCode } = req.body;
-
-  if (!activationToken || !activationCode) {
-    return res.status(400).json({
-      message: "Please provide all the required fields.",
-    });
-  }
-  let newUser;
-  try {
-    newUser = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
-  } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return res.status(400).json({ message: "Activation token has expired." });
+    if (newLandlord.activationCode !== activationCode) {
+      return res.status(400).json({ message: "Invalid activation code" });
     }
-    return res.status(400).json({ message: "Invalid activation token." });
-  }
+    const { name, email, password } = newLandlord.landlord;
 
-  if (newUser.activationCode !== activationCode) {
-    return res.status(400).json({ message: "Invalid activation code." });
-  }
-  const { name, email, password } = newUser.user;
-  const existingUser = await User.findOne({ email });
-
-  if (existingUser) {
-    return res.status(409).json({
-      message:
-        "An account with this email address already exist. Login instead.",
+    const existingLandlord = await Landlord.findOne({ email });
+    if (existingLandlord) {
+      return res.status(409).json({
+        message:
+          "An account with this email address already exists. Please use a different email address or log in to your existing account.",
+      });
+    }
+    const landlord = await Landlord.create({
+      name,
+      email,
+      password,
+      role: "landlord",
     });
+
+    return res.status(201).json({
+      success: true,
+      message:
+        "Your account has been successfully activated. Please proceed to log in.",
+    });
+  } catch (error) {
+    throw new Error(error);
   }
-  const user = await User.create({
-    name,
-    email,
-    password,
-    role: "tenant",
-  });
-  return res.status(201).json({
-    success: true,
-    message: "Your account has been activated. Proceed to log in.",
-  });
 });
 
 const loginAdmin = asyncHandler(async (req, res) => {
@@ -270,7 +192,6 @@ const loginAdmin = asyncHandler(async (req, res) => {
     accessToken: accessToken,
   });
 });
-
 
 const loginLandlord = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -609,10 +530,8 @@ const logout = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  registerNewUser,
+  registerNewLandlord,
   activateLandlordAccount,
-  activateTenantAccount,
-  activateAdminAccount,
   loginTenant,
   loginLandlord,
   loginAdmin,

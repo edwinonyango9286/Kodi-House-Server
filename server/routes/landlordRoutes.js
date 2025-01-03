@@ -1,7 +1,6 @@
 const express = require("express");
 const {
-  registerNewUser,
-  activateTenantAccount,
+  registerNewLandlord,
   activateLandlordAccount,
   loginLandlord,
   loginTenant,
@@ -9,19 +8,16 @@ const {
   passwordResetToken,
   resetPassword,
   loginAdmin,
-  activateAdminAccount,
   logout,
-} = require("../controllers/authController");
+} = require("../controllers/landlordController");
 const { authMiddleware } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
 // post routes
+router.post("/register-new-landlord", registerNewLandlord);
 
-router.post("/register-new-user", registerNewUser);
-router.post("/activate-admin-account", activateAdminAccount);
 router.post("/activate-landlord-account", activateLandlordAccount);
-router.post("/activate-tenant-account", activateTenantAccount);
 router.post("/login-admin", loginAdmin);
 router.post("/login-landlord", loginLandlord);
 router.post("/login-tenant", loginTenant);

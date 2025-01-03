@@ -1,7 +1,9 @@
 const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
-const User = require("../models/userModel");
-const { handleRefreshToken } = require("../controllers/authController");
+const Landlord = require("../models/landlordModel");
+const { handleRefreshToken } = require("../controllers/landlordController");
+const Tenant = require("../models/tenantsModel");
+const Admin = require("../models/adminModel");
 
 const authMiddleware = asyncHandler(async (req, res, next) => {
   if (
@@ -15,13 +17,13 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
   let accessToken = req.headers.authorization.split(" ")[1];
   try {
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
-    const user = await User.findById(decoded.id);
-    if (!user || user.tokenVersion !== decoded.tokenVersion) {
+    const landlord = await Landlord.findById(decoded.id);
+    if (!landlord || landlord.tokenVersion !== decoded.tokenVersion) {
       return res
         .status(401)
         .json({ message: "You're not logged in. Please log in to continue." });
     }
-    req.user = user;
+    req.landlord = landlord;
     next();
   } catch (error) {
     if (
@@ -46,41 +48,41 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
   }
 });
 
+
+
 const isTenant = asyncHandler(async (req, res, next) => {
-  const { email } = req.user;
-  const user = await User.findOne({ email });
-  if (!user) {
+  const { email } = req.tenant;
+  const tenant = await Tenant.findOne({ email });
+  if (!tenant) {
     return res.status(404).json({
       message:
         "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
     });
   }
-  if (user.role !== "tenant") {
+  if (tenant.role !== "tenant") {
     return res.status(403).json({ message: "Not authorized." });
   }
   next();
 });
 
 const isAdmin = asyncHandler(async (req, res, next) => {
-  const { email } = req.user;
-  const adminUser = await User.findOne({ email });
-  if (!adminUser) {
+  const { email } = req.admin;
+  const admin = await Admin.findOne({ email });
+  if (!admin) {
     return res.status(404).json({
       message:
         "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
     });
   }
-
-  if (adminUser.role !== "admin") {
+  if (admin.role !== "admin") {
     return res.status(403).json({ message: "Not authorized." });
   }
-
   next();
 });
 
 const isLandlord = asyncHandler(async (req, res, next) => {
-  const { email } = req.user;
-  const landlord = await User.findOne({ email });
+  const { email } = req.landlord;
+  const landlord = await Landlord.findOne({ email });
   if (!landlord) {
     return res.status(404).json({
       message:
@@ -92,5 +94,7 @@ const isLandlord = asyncHandler(async (req, res, next) => {
   }
   next();
 });
+
+
 
 module.exports = { isAdmin, authMiddleware, isLandlord, isTenant };

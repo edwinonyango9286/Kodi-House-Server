@@ -4,12 +4,12 @@ const session = require("express-session");
 const dotenv = require("dotenv");
 dotenv.config();
 const passport = require("passport");
-const authRouter = require("./routes/authRoutes");
+const landlordRouter = require("./routes/landlordRoutes");
+const tenantRouter = require("./routes/tenantRoutes");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const cors = require("cors");
-
 
 const origins = [
   process.env.ORIGIN_LOCALHOST_3000,
@@ -38,7 +38,7 @@ app.use(
     secret: process.env.SESSION_SECERET_KEY,
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false },//should be set to true if you are using https for example in production.
+    cookie: { secure: false }, //should be set to true if you are using https for example in production.
   })
 );
 
@@ -50,6 +50,7 @@ app.use(bodyParser.urlencoded({ limit: "5mb", extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-app.use("/api/auth", authRouter);
+app.use("/api/landlord", landlordRouter);
+app.use("/api/tenant", tenantRouter);
 
 module.exports = app;
