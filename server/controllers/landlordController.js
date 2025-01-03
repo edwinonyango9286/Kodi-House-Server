@@ -82,8 +82,6 @@ const createActivationToken = (landlord) => {
   return { token, activationCode };
 };
 
-
-
 const activateLandlordAccount = asyncHandler(async (req, res) => {
   try {
     const { activationToken, activationCode } = req.body;
@@ -93,18 +91,17 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
       });
     }
 
-
-   let newLandlord;
-   try {
-     newLandlord = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
-   } catch (err) {
-     if (err.name === "TokenExpiredError") {
-       return res
-         .status(400)
-         .json({ message: "Activation token has expired." });
-     }
-     return res.status(400).json({ message: "Invalid activation token." });
-   }
+    let newLandlord;
+    try {
+      newLandlord = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
+    } catch (err) {
+      if (err.name === "TokenExpiredError") {
+        return res
+          .status(400)
+          .json({ message: "Activation token has expired." });
+      }
+      return res.status(400).json({ message: "Invalid activation token." });
+    }
 
     if (newLandlord.activationCode !== activationCode) {
       return res.status(400).json({ message: "Invalid activation code" });
@@ -135,172 +132,61 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
   }
 });
 
-const loginAdmin = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res
-      .status(400)
-      .json({ message: "Please provide all the required fields." });
-  }
-  if (!emailValidator.validate(email)) {
-    return res
-      .status(400)
-      .json({ message: "Please provide a valid email address." });
-  }
-
-  try {
-    validatePassword(password);
-  } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
-  }
-
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    return res.status(403).json({
-      message:
-        "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
-    });
-  }
-  if (user && user.role !== "admin") {
-    res.status(401).json({ message: "Not authorised." });
-  }
-  if (user && !(await user.isPasswordMatched(password))) {
-    res.status(403).json({ message: "Wrong email or password." });
-  }
-  user.tokenVersion += 1;
-  await user.save();
-  const accessToken = generateAccessToken(user._id, user.tokenVersion);
-  const refreshToken = generateRefreshToken(user._id);
-  user.refreshToken = refreshToken;
-  await user.save();
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
-  });
-  return res.status(200).json({
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    avatar: user.avatar,
-    accessToken: accessToken,
-  });
-});
-
 const loginLandlord = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res
-      .status(400)
-      .json({ message: "Please provide all the required fields." });
-  }
-  if (!emailValidator.validate(email)) {
-    return res
-      .status(400)
-      .json({ message: "Please provide a valid email address." });
-  }
   try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all the required fields." });
+    }
+    if (!emailValidator.validate(email)) {
+      return res
+        .status(400)
+        .json({ message: "Please provide a valid email address." });
+    }
     validatePassword(password);
+    const landlord = await Landlord.findOne({ email });
+
+    if (!landlord) {
+      return res.status(403).json({
+        message:
+          "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
+      });
+    }
+    if (landlord && landlord.role !== "landlord") {
+      res.status(401).json({ message: "Not authorised." });
+    }
+    if (landlord && !(await landlord.isPasswordMatched(password))) {
+      res.status(403).json({ message: "Wrong email or password." });
+    }
+
+    landlord.tokenVersion += 1;
+    await landlord.save();
+    const accessToken = generateAccessToken(
+      landlord._id,
+      landlord.tokenVersion
+    );
+    const refreshToken = generateRefreshToken(landlord._id);
+    landlord.refreshToken = refreshToken;
+    await landlord.save();
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
+    });
+    return res.status(200).json({
+      _id: landlord._id,
+      name: landlord.name,
+      email: landlord.email,
+      role: landlord.role,
+      avatar: landlord.avatar,
+      accessToken: accessToken,
+    });
   } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
+    throw new Error(error);
   }
-
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    return res.status(403).json({
-      message:
-        "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
-    });
-  }
-  if (user && user.role !== "landlord") {
-    res.status(401).json({ message: "Not authorised." });
-  }
-  if (user && !(await user.isPasswordMatched(password))) {
-    res.status(403).json({ message: "Wrong email or password." });
-  }
-
-  user.tokenVersion += 1;
-  await user.save();
-  const accessToken = generateAccessToken(user._id, user.tokenVersion);
-  const refreshToken = generateRefreshToken(user._id);
-  user.refreshToken = refreshToken;
-  await user.save();
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
-  });
-  return res.status(200).json({
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    avatar: user.avatar,
-    accessToken: accessToken,
-  });
-});
-
-const loginTenant = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res
-      .status(400)
-      .json({ message: "Please provide all the required fields." });
-  }
-  if (!emailValidator.validate(email)) {
-    return res
-      .status(400)
-      .json({ message: "Please provide a valid email address." });
-  }
-  try {
-    validatePassword(password);
-  } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
-  }
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(403).json({
-      message:
-        "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
-    });
-  }
-  if (user && !(await user.isPasswordMatched(password))) {
-    res.status(403).json({ message: "Wrong email or password." });
-  }
-  user.tokenVersion += 1;
-  await user.save();
-  const accessToken = generateAccessToken(user._id, user.tokenVersion);
-  const refreshToken = generateRefreshToken(user._id);
-  user.refreshToken = refreshToken;
-  await user.save();
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
-  });
-  return res.status(200).json({
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    avatar: user.avatar,
-    accessToken: accessToken,
-  });
 });
 
 const handleRefreshToken = asyncHandler(async (req, res) => {
@@ -398,114 +284,121 @@ const updatePassword = asyncHandler(async (req, res) => {
 
 // send an email to the user with the password resent link and a token
 const passwordResetToken = asyncHandler(async (req, res) => {
-  const { email } = req.body;
-  if (!email) {
-    return res
-      .status(400)
-      .json({ message: "Please provide your email address." });
-  }
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res
+        .status(400)
+        .json({ message: "Please provide your email address." });
+    }
 
-  if (!emailValidator.validate(email)) {
-    return res
-      .status(400)
-      .json({ message: "Please provide a valid email address." });
-  }
+    if (!emailValidator.validate(email)) {
+      return res
+        .status(400)
+        .json({ message: "Please provide a valid email address." });
+    }
 
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    return res.status(404).json({
-      message:
-        "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
+    const landlord = await Landlord.findOne({ email });
+    if (!landlord) {
+      return res.status(404).json({
+        message:
+          "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
+      });
+    }
+    const token = await landlord.createPasswordResetToken();
+    await landlord.save();
+    const data = { landlord: { name: landlord.name }, token };
+    const html = await ejs.renderFile(
+      path.join(__dirname, "../mail-templates/reset-password-token-mail.ejs"),
+      data
+    );
+    await sendMail({
+      email: landlord.email,
+      subject: "Password Reset Link",
+      template: "reset-password-token-mail.ejs",
+      data,
     });
+    console.log(token);
+    return res.status(200).json({
+      message: `A password reset link has been sent to ${landlord.email}. Please check your email inbox and follow the instructions to reset your password.`,
+    });
+  } catch (error) {
+    throw new Error(error);
   }
-  const token = await user.createPasswordResetToken();
-  await user.save();
-  const data = { user: { name: user.name }, token };
-  const html = await ejs.renderFile(
-    path.join(__dirname, "../mail-templates/reset-password-token-mail.ejs"),
-    data
-  );
-  await sendMail({
-    email: user.email,
-    subject: "Password Reset Link",
-    template: "reset-password-token-mail.ejs",
-    data,
-  });
-  console.log(token);
-  return res.status(200).json({
-    message: `A password reset link has been sent to ${user.email}. Please check it.`,
-  });
 });
 
 const resetPassword = asyncHandler(async (req, res) => {
-  const { password, confirmPassword } = req.body;
-
-  if (!password || !confirmPassword) {
-    return res
-      .status(400)
-      .json({ message: "Please provide all the required fields." });
-  }
   try {
+    const { password, confirmPassword } = req.body;
+    if (!password || !confirmPassword) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all the required fields." });
+    }
     validatePassword(password);
-  } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
-  }
-  try {
     validatePassword(confirmPassword);
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        message: "Password and confirm password values do not match.",
+      });
+    }
+    const { token } = req.params;
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const landlord = await Landlord.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+    if (!landlord) {
+      return res.status(400).json({
+        message:
+          "Something went wrong. Please try initiating the password reset process again.",
+      });
+    }
+    if (await landlord.isPasswordMatched(password)) {
+      return res.status(400).json({
+        message:
+          "Please choose a new password that is different from the old one.",
+      });
+    }
+    landlord.password = password;
+    landlord.passwordResetToken = undefined;
+    landlord.passwordResetExpires = undefined;
+    await landlord.save();
+    return res.json({
+      message: "Your password has been successfully reset. Proceed to login.",
+    });
   } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
+    throw new Error(error);
   }
-  if (password !== confirmPassword) {
-    return res
-      .status(400)
-      .json({ message: "Password and confirm password values do not match." });
-  }
-  const { token } = req.params;
-  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
-  const user = await User.findOne({
-    passwordResetToken: hashedToken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
-  if (!user) {
-    return res.status(400).json({
-      message:
-        "Something went wrong. Please try initiating the password reset process again.",
-    });
-  }
-  if (await user.isPasswordMatched(password)) {
-    return res.status(400).json({
-      message:
-        "Please choose a new password that is different from the old one.",
-    });
-  }
-
-  user.password = password;
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
-  await user.save();
-  return res.json({
-    message: "Your password has been successfully reset. Proceed to login.",
-  });
 });
 
 const logout = asyncHandler(async (req, res) => {
-  const cookie = req.cookies;
-  if (!cookie.refreshToken) {
-    return res
-      .status(401)
-      .json({ message: "We could not find refresh token in cookies." });
-  }
-  const refreshToken = cookie.refreshToken;
-  const user = await User.findOne({ refreshToken });
-  if (!user) {
+  try {
+    const cookie = req.cookies;
+    if (!cookie.refreshToken) {
+      return res
+        .status(401)
+        .json({ message: "We could not find refresh token in cookies." });
+    }
+    const refreshToken = cookie.refreshToken;
+    const user = await User.findOne({ refreshToken });
+    if (!user) {
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      return res
+        .status(200)
+        .json({ message: "You have successfully logged out." });
+    }
+    await Landlord.findOneAndUpdate(
+      { refreshToken },
+      {
+        refreshToken: "",
+      }
+    );
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -514,27 +407,16 @@ const logout = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json({ message: "You have successfully logged out." });
+  } catch (error) {
+    throw new Error(error);
   }
-  await User.findOneAndUpdate(
-    { refreshToken },
-    {
-      refreshToken: "",
-    }
-  );
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
-  return res.status(200).json({ message: "You have successfully logged out." });
 });
+
 
 module.exports = {
   registerNewLandlord,
   activateLandlordAccount,
-  loginTenant,
   loginLandlord,
-  loginAdmin,
   updatePassword,
   passwordResetToken,
   resetPassword,

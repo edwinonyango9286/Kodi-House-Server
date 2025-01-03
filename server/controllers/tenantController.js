@@ -132,7 +132,53 @@ const activateTenantAccount = asyncHandler(async (req, res) => {
   }
 });
 
+const loginTenant = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res
+      .status(400)
+      .json({ message: "Please provide all the required fields." });
+  }
+  if (!emailValidator.validate(email)) {
+    return res
+      .status(400)
+      .json({ message: "Please provide a valid email address." });
+  }
+  validatePassword(password);
+  const tenant = await Tenant.findOne({ email });
+  if (!tenant) {
+    return res.status(403).json({
+      message:
+        "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
+    });
+  }
+  if (tenant && !(await tenant.isPasswordMatched(password))) {
+    res.status(403).json({ message: "Wrong email or password." });
+  }
+  tenant.tokenVersion += 1;
+  await tenant.save();
+  const accessToken = generateAccessToken(tenant._id, tenant.tokenVersion);
+  const refreshToken = generateRefreshToken(tenant._id);
+  tenant.refreshToken = refreshToken;
+  await tenant.save();
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
+  });
+  return res.status(200).json({
+    _id: tenant._id,
+    name: tenant.name,
+    email: tenant.email,
+    role: tenant.role,
+    avatar: tenant.avatar,
+    accessToken: accessToken,
+  });
+});
+
 module.exports = {
   registerNewTenant,
   activateTenantAccount,
+  loginTenant,
 };
