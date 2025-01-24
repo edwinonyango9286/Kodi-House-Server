@@ -51,7 +51,6 @@ const landlordSchema = new mongoose.Schema(
         ref: "Tenant",
       },
     ],
-
     avatar: {
       type: String,
       default:

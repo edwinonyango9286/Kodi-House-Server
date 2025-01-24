@@ -177,8 +177,188 @@ const loginTenant = asyncHandler(async (req, res) => {
   });
 });
 
+const handleRefreshToken = asyncHandler(async (req, res) => {
+  const cookie = req.cookies;
+  if (!cookie?.refreshToken) {
+    return res
+      .status(401)
+      .json({ message: "You're not logged in. Please log in to continue." });
+  }
+  const refreshToken = cookie.refreshToken;
+  const tenant = await Tenant.findOne({ refreshToken });
+  if (!tenant) {
+    return res
+      .status(401)
+      .json({ message: "You're not logged in. Please log in to continue." });
+  }
+  try {
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    if (tenant.id !== decoded.id) {
+      return res
+        .status(403)
+        .json({ message: "You're not logged in. Please log in to continue." });
+    }
+    const newAccessToken = generateAccessToken(tenant._id);
+    req.tenant = tenant;
+    return newAccessToken;
+  } catch (error) {
+    return res.status(403).json({
+      message: "You're not logged in. Please log in to continue.",
+    });
+  }
+});
+
+const updatePassword = asyncHandler(async (req, res) => {
+  const { _id } = req.tenant;
+  const { password, confirmPassword } = req.body;
+
+  if (!password || !confirmPassword) {
+    return res
+      .status(400)
+      .json({ message: "Please fill in all the required fields." });
+  }
+  try {
+    validateMongoDbId(_id);
+  } catch (error) {
+    return res.status(400).json({
+      message: "We couldn't find an account associated with this id.",
+    });
+  }
+  try {
+    validatePassword(password);
+  } catch (error) {
+    return res.status(400).json({
+      message:
+        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
+    });
+  }
+
+  try {
+    validatePassword(confirmPassword);
+  } catch (error) {
+    return res.status(400).json({
+      message:
+        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
+    });
+  }
+  if (password !== confirmPassword) {
+    return res
+      .status(400)
+      .json({ message: "Password and confirm password values do not match." });
+  }
+  const tenant = await Tenant.findById(_id);
+  if (!tenant) {
+    return res.status(404).json({
+      message: "We couldn't find an account associated with this id.",
+    });
+  }
+  if (await tenant.isPasswordMatched(password)) {
+    return res.status(400).json({
+      message:
+        "Please choose a new password that is different from the old one.",
+    });
+  }
+  tenant.password = password;
+  await tenant.save();
+
+  return res.status(200).json({
+    message:
+      "Your password has been update. Proceed to log in with the new password.",
+  });
+});
+
+const passwordResetToken = asyncHandler(async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res
+        .status(400)
+        .json({ message: "Please provide your email address." });
+    }
+
+    if (!emailValidator.validate(email)) {
+      return res
+        .status(400)
+        .json({ message: "Please provide a valid email address." });
+    }
+
+    const tenant = await Tenant.findOne({ email });
+    if (!tenant) {
+      return res.status(404).json({
+        message:
+          "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
+      });
+    }
+    const token = await tenant.createPasswordResetToken();
+    await tenant.save();
+    const data = { tenant: { name: tenant.name }, token };
+    const html = await ejs.renderFile(
+      path.join(
+        __dirname,
+        "../mail-templates/tenant-reset-password-token-mail.ejs"
+      ),
+      data
+    );
+    await sendMail({
+      email: tenant.email,
+      subject: "Password Reset Link",
+      template: "tenant-reset-password-token-mail.ejs",
+      data,
+    });
+    console.log(token);
+    return res.status(200).json({
+      message: `A password reset link has been sent to ${tenant.email}. Please check your email inbox and follow the instructions to reset your password.`,
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const logout = asyncHandler(async (req, res) => {
+  try {
+    const cookie = req.cookies;
+    if (!cookie.refreshToken) {
+      return res
+        .status(401)
+        .json({ message: "We could not find refresh token in cookies." });
+    }
+    const refreshToken = cookie.refreshToken;
+    const tenant = await Tenant.findOne({ refreshToken });
+    if (!tenant) {
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+      return res
+        .status(200)
+        .json({ message: "You have successfully logged out." });
+    }
+    await Tenant.findOneAndUpdate(
+      { refreshToken },
+      {
+        refreshToken: "",
+      }
+    );
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+    return res
+      .status(200)
+      .json({ message: "You have successfully logged out." });
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+
 module.exports = {
   registerNewTenant,
   activateTenantAccount,
   loginTenant,
+  handleRefreshToken,
+  passwordResetToken,
+  logout,
 };

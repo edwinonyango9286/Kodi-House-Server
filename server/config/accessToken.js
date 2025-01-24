@@ -6,7 +6,7 @@ const generateAccessToken = (id, tokenVersion) => {
       { id, tokenVersion, iat: Math.floor(Date.now() / 1000) },
       process.env.ACCESS_TOKEN_SECRET,
       {
-        expiresIn: "15m",
+        expiresIn: "2m",
       }
     );
   } catch (error) {

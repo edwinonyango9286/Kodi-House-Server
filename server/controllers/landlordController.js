@@ -196,25 +196,22 @@ const handleRefreshToken = asyncHandler(async (req, res) => {
       .status(401)
       .json({ message: "You're not logged in. Please log in to continue." });
   }
-
   const refreshToken = cookie.refreshToken;
-  const user = await User.findOne({ refreshToken });
-  if (!user) {
+  const landlord = await Landlord.findOne({ refreshToken });
+  if (!landlord) {
     return res
       .status(401)
       .json({ message: "You're not logged in. Please log in to continue." });
   }
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-    if (user.id !== decoded.id) {
+    if (landlord.id !== decoded.id) {
       return res
         .status(403)
         .json({ message: "You're not logged in. Please log in to continue." });
     }
-
-    const newAccessToken = generateAccessToken(user._id);
-    req.user = user;
-
+    const newAccessToken = generateAccessToken(landlord._id);
+    req.landlord = landlord;
     return newAccessToken;
   } catch (error) {
     return res.status(403).json({
@@ -224,7 +221,7 @@ const handleRefreshToken = asyncHandler(async (req, res) => {
 });
 
 const updatePassword = asyncHandler(async (req, res) => {
-  const { _id } = req.user;
+  const { _id } = req.landlord;
   const { password, confirmPassword } = req.body;
 
   if (!password || !confirmPassword) {
@@ -261,20 +258,20 @@ const updatePassword = asyncHandler(async (req, res) => {
       .status(400)
       .json({ message: "Password and confirm password values do not match." });
   }
-  const user = await User.findById(_id);
-  if (!user) {
+  const landlord = await Landlord.findById(_id);
+  if (!landlord) {
     return res.status(404).json({
       message: "We couldn't find an account associated with this id.",
     });
   }
-  if (await user.isPasswordMatched(password)) {
+  if (await landlord.isPasswordMatched(password)) {
     return res.status(400).json({
       message:
         "Please choose a new password that is different from the old one.",
     });
   }
-  user.password = password;
-  await user.save();
+  landlord.password = password;
+  await landlord.save();
 
   return res.status(200).json({
     message:
@@ -282,7 +279,7 @@ const updatePassword = asyncHandler(async (req, res) => {
   });
 });
 
-// send an email to the user with the password resent link and a token
+// send an email to the landlord with the password resent link and a token
 const passwordResetToken = asyncHandler(async (req, res) => {
   try {
     const { email } = req.body;
@@ -309,13 +306,16 @@ const passwordResetToken = asyncHandler(async (req, res) => {
     await landlord.save();
     const data = { landlord: { name: landlord.name }, token };
     const html = await ejs.renderFile(
-      path.join(__dirname, "../mail-templates/reset-password-token-mail.ejs"),
+      path.join(
+        __dirname,
+        "../mail-templates/landlord-reset-password-token-mail.ejs"
+      ),
       data
     );
     await sendMail({
       email: landlord.email,
       subject: "Password Reset Link",
-      template: "reset-password-token-mail.ejs",
+      template: "landlord-reset-password-token-mail.ejs",
       data,
     });
     console.log(token);
@@ -326,6 +326,7 @@ const passwordResetToken = asyncHandler(async (req, res) => {
     throw new Error(error);
   }
 });
+
 
 const resetPassword = asyncHandler(async (req, res) => {
   try {
@@ -373,6 +374,8 @@ const resetPassword = asyncHandler(async (req, res) => {
   }
 });
 
+
+
 const logout = asyncHandler(async (req, res) => {
   try {
     const cookie = req.cookies;
@@ -382,8 +385,8 @@ const logout = asyncHandler(async (req, res) => {
         .json({ message: "We could not find refresh token in cookies." });
     }
     const refreshToken = cookie.refreshToken;
-    const user = await User.findOne({ refreshToken });
-    if (!user) {
+    const landlord = await Landlord.findOne({ refreshToken });
+    if (!landlord) {
       res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -411,7 +414,6 @@ const logout = asyncHandler(async (req, res) => {
     throw new Error(error);
   }
 });
-
 
 module.exports = {
   registerNewLandlord,

@@ -1,5 +1,5 @@
 const express = require("express");
-const app = express({ limit: "50mb" });
+const app = express();
 const session = require("express-session");
 const dotenv = require("dotenv");
 dotenv.config();
@@ -10,6 +10,8 @@ const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const cors = require("cors");
+
+app.use(express.json({ limit: "50mb" }));
 
 const origins = [
   process.env.ORIGIN_LOCALHOST_3000,
