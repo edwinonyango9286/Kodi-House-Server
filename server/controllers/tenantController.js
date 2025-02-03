@@ -58,8 +58,12 @@ const registerNewTenant = asyncHandler(async (req, res) => {
       activationToken: activationToken?.token,
     });
   } catch (error) {
-    throw new Error(error);
-  }
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });  }
 });
 
 //create tenant activation token
@@ -79,8 +83,12 @@ const createActivationToken = (tenant) => {
     );
     return { token, activationCode };
   } catch (error) {
-    throw new Error(error);
-  }
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });  }
 };
 
 const activateTenantAccount = asyncHandler(async (req, res) => {
@@ -128,8 +136,12 @@ const activateTenantAccount = asyncHandler(async (req, res) => {
         "Your account has been successfully activated. Please proceed to log in.",
     });
   } catch (error) {
-    throw new Error(error);
-  }
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });  }
 });
 
 const loginTenant = asyncHandler(async (req, res) => {
@@ -310,8 +322,12 @@ const passwordResetToken = asyncHandler(async (req, res) => {
       message: `A password reset link has been sent to ${tenant.email}. Please check your email inbox and follow the instructions to reset your password.`,
     });
   } catch (error) {
-    throw new Error(error);
-  }
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });  }
 });
 
 const logout = asyncHandler(async (req, res) => {
@@ -349,8 +365,12 @@ const logout = asyncHandler(async (req, res) => {
       .status(200)
       .json({ message: "You have successfully logged out." });
   } catch (error) {
-    throw new Error(error);
-  }
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });  }
 });
 
 

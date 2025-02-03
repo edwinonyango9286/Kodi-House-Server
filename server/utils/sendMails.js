@@ -30,9 +30,12 @@ const sendMail = asyncHandler(async (options) => {
   try {
     await transporter.sendMail(mailOptions);
   } catch (error) {
-    throw new Error(
-      "We could not send you a verification email. Try again later."
-    );
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });
   }
 });
 

@@ -7,20 +7,26 @@ import validateMongoDbId from "../utils/validateMongoDbId";
 const createApplication = asyncHandler(async (req, res) => {
   const { unitName, userName } = req.body;
   if (!unitName || !userName) {
-    return res
-      .status(400)
-      .json({ messa: "Please provide all the required fields" });
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Please provide all the required fields",
+    });
   }
   try {
     const application = await Application.create(req.body);
     if (application) {
       return res.status(201).json({
-        success: true,
+        status: "SUCCESS",
         message: "Application created successfully.",
       });
     }
   } catch (error) {
-    throw new Error(error);
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });
   }
 });
 
@@ -42,7 +48,12 @@ const getApplication = asyncHandler(async (req, res) => {
       return res.status(200).json({ application, success: true });
     }
   } catch (error) {
-    throw new Error(error);
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });
   }
 });
 
@@ -55,7 +66,12 @@ const getAllApplications = asyncHandler(async (req, res) => {
       return res.status(200).json({ success: true, applications });
     }
   } catch (error) {
-    throw new Error(error);
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });
   }
 });
 
@@ -81,7 +97,12 @@ const updateApplication = asyncHandler(async (req, res) => {
         .json({ success: true, message: "Application updated successfully." });
     }
   } catch (error) {
-    throw new Error(error);
+    return res
+    .status(500)
+    .json({
+      status: "FAILED",
+      message: "The application has experienced an error. Please try again.",
+    });
   }
 });
 
@@ -107,6 +128,13 @@ const deleteApplication = asyncHandler(async (req, res) => {
         .json({ success: true, message: "Application deleted successfully." });
     }
   } catch (error) {
-    throw new Error(error);
+    return res
+      .status(500)
+      .json({
+        status: "FAILED",
+        message: "The application has experienced an error. Please try again.",
+      });
   }
 });
+
+

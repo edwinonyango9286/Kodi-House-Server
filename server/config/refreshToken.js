@@ -10,7 +10,7 @@ const generateRefreshToken = (id) => {
       }
     );
   } catch (error) {
-    throw new Error("Something went wrong. Please try again later.");
+    return { status: "FAILED", message: "Refresh token generation failed." };
   }
 };
 
