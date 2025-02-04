@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
 const Landlord = require("../models/landlordModel");
 const { handleRefreshToken } = require("../controllers/landlordController");
-const Tenant = require("../models/tenantsModel");
+const Tenant = require("../models/tenantModel");
 const Admin = require("../models/adminModel");
 
 const authMiddleware = asyncHandler(async (req, res, next) => {

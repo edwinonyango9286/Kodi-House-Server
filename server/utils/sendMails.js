@@ -16,7 +16,6 @@ const sendMail = asyncHandler(async (options) => {
   });
 
   const { email, subject, template, data } = options;
-
   const templatePath = path.join(__dirname, "../mail-templates", template);
   const html = await ejs.renderFile(templatePath, data);
 
@@ -26,16 +25,13 @@ const sendMail = asyncHandler(async (options) => {
     subject,
     html,
   };
-
   try {
     await transporter.sendMail(mailOptions);
   } catch (error) {
-    return res
-    .status(500)
-    .json({
-      status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
-    });
+    return {
+      status: "Failed",
+      message: error.message,
+    };
   }
 });
 

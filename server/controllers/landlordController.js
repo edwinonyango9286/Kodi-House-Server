@@ -11,6 +11,9 @@ const { generateRefreshToken } = require("../config/refreshToken");
 const crypto = require("crypto");
 const Landlord = require("../models/landlordModel");
 
+
+
+
 //register a landlord
 const registerNewLandlord = asyncHandler(async (req, res) => {
   try {
@@ -40,7 +43,6 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
       email,
       password,
     };
-
     const activationToken = createActivationToken(newLandlord);
     const activationCode = activationToken.activationCode;
     const data = { newLandlord: { name: newLandlord?.name }, activationCode };
@@ -63,7 +65,7 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -87,6 +89,7 @@ const createActivationToken = (landlord) => {
   return { token, activationCode };
 };
 
+
 const activateLandlordAccount = asyncHandler(async (req, res) => {
   try {
     const { activationToken, activationCode } = req.body;
@@ -95,7 +98,6 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
         message: "Please provide all the required fields.",
       });
     }
-
     let newLandlord;
     try {
       newLandlord = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);

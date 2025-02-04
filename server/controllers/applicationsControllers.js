@@ -3,10 +3,27 @@ import Application from "../models/applocationsModel";
 import validateMongoDbId from "../utils/validateMongoDbId";
 
 // create an application
-
 const createApplication = asyncHandler(async (req, res) => {
-  const { unitName, userName } = req.body;
-  if (!unitName || !userName) {
+  const {
+    firstName,
+    lastName,
+    email,
+    phoneNumber,
+    property,
+    unit,
+    tourDate,
+    tourTime,
+  } = req.body;
+  if (
+    !firstName ||
+    !lastName ||
+    !email ||
+    !phoneNumber ||
+    !property ||
+    !unit ||
+    !tourDate ||
+    !tourTime
+  ) {
     return res.status(400).json({
       status: "FAILED",
       message: "Please provide all the required fields",
@@ -21,11 +38,9 @@ const createApplication = asyncHandler(async (req, res) => {
       });
     }
   } catch (error) {
-    return res
-    .status(500)
-    .json({
+    return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -48,11 +63,9 @@ const getApplication = asyncHandler(async (req, res) => {
       return res.status(200).json({ application, success: true });
     }
   } catch (error) {
-    return res
-    .status(500)
-    .json({
+    return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -62,15 +75,11 @@ const getApplication = asyncHandler(async (req, res) => {
 const getAllApplications = asyncHandler(async (req, res) => {
   try {
     const applications = Application.find();
-    if (applications) {
-      return res.status(200).json({ success: true, applications });
-    }
+    return res.status(200).json({ success: true, applications });
   } catch (error) {
-    return res
-    .status(500)
-    .json({
+    return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -86,22 +95,19 @@ const updateApplication = asyncHandler(async (req, res) => {
   validateMongoDbId(id);
 
   try {
-    const application = Application.findById(id);
-    if (!application) {
-      return res.status(404).json({ message: "Application not found." });
-    }
     const updatedApplication = Application.findByIdAndUpdate(id);
     if (updatedApplication) {
       return res
         .status(200)
         .json({ success: true, message: "Application updated successfully." });
     }
+    if (!updatedApplication) {
+      return res.status(404).json({ message: "Application not found." });
+    }
   } catch (error) {
-    return res
-    .status(500)
-    .json({
+    return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -115,26 +121,28 @@ const deleteApplication = asyncHandler(async (req, res) => {
       .json({ message: "Please provide an application id." });
   }
   validateMongoDbId(id);
-
   try {
-    const application = Application.findById(id);
-    if (!application) {
-      return res.status(404).json({ message: "Application not found." });
-    }
     const deletedApplication = Application.findByIdAndDelete(id);
     if (deletedApplication) {
       return res
         .status(200)
         .json({ success: true, message: "Application deleted successfully." });
     }
+    if (!deletedApplication) {
+      return res.status(404).json({ message: "Application not found." });
+    }
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        status: "FAILED",
-        message: "The application has experienced an error. Please try again.",
-      });
+    return res.status(500).json({
+      status: "FAILED",
+      message: error.message,
+    });
   }
 });
 
-
+module.exports = {
+  createApplication,
+  getApplication,
+  getAllApplications,
+  updateApplication,
+  deleteApplication,
+};

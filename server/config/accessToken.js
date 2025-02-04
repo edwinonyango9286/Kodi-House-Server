@@ -10,7 +10,7 @@ const generateAccessToken = (id, tokenVersion) => {
       }
     );
   } catch (error) {
-    return { status: "FAILED", message: "Access token generation failed." };
+    return { status: "FAILED", message: error.message };
   }
 };
 

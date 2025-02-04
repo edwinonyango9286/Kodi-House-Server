@@ -26,10 +26,17 @@ const adminSchema = new mongoose.Schema(
       default: "admin",
     },
     avatar: {
-      type: String,
-      default:
-        "https://www.hotelbooqi.com/wp-content/uploads/2021/12/128-1280406_view-user-icon-png-user-circle-icon-png.png",
-      trim: true,
+      secure_url: {
+        type: String,
+        default:
+          "https://www.hotelbooqi.com/wp-content/uploads/2021/12/128-1280406_view-user-icon-png-user-circle-icon-png.png",
+      },
+
+      public_id: {
+        type: String,
+        default:
+          "https://www.hotelbooqi.com/wp-content/uploads/2021/12/128-1280406_view-user-icon-png-user-circle-icon-png.png",
+      },
     },
     permission: {
       type: String,
