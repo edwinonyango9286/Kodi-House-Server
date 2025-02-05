@@ -10,6 +10,7 @@ const landlordSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 50,
       trim: true,
+      lowercase:true,
     },
 
     firstName: {
@@ -139,19 +140,12 @@ const landlordSchema = new mongoose.Schema(
     },
     refreshToken: {
       type: String,
-      require: false,
       unique: true,
-      trim: true,
-    },
-    tokenVersion: {
-      type: Number,
-      default: 0,
     },
     passwordChagedAt: Date,
     passwordResetToken: String,
     passwordResetExpires: Date,
   },
-
   {
     timestamps: true,
   }

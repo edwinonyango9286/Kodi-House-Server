@@ -4,8 +4,8 @@ const session = require("express-session");
 const dotenv = require("dotenv");
 dotenv.config();
 const passport = require("passport");
-const landlordRouter = require("./routes/landlordRoutes");
-const tenantRouter = require("./routes/tenantRoutes");
+const landlordAuthRouter = require("./routes/landlordAuthRoutes");
+const tenantAuthRouter = require("./routes/tenantAuthRoutes");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
@@ -52,7 +52,7 @@ app.use(bodyParser.urlencoded({ limit: "5mb", extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-app.use("/api/landlord", landlordRouter);
-app.use("/api/tenant", tenantRouter);
+app.use("/api/landlord", landlordAuthRouter);
+app.use("/api/tenant", tenantAuthRouter);
 
 module.exports = app;

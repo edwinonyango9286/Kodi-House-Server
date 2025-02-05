@@ -11,9 +11,6 @@ const { generateRefreshToken } = require("../config/refreshToken");
 const crypto = require("crypto");
 const Landlord = require("../models/landlordModel");
 
-
-
-
 //register a landlord
 const registerNewLandlord = asyncHandler(async (req, res) => {
   try {
@@ -70,8 +67,6 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
   }
 });
 
-
-
 //create landlord activation token
 
 const createActivationToken = (landlord) => {
@@ -88,7 +83,6 @@ const createActivationToken = (landlord) => {
   );
   return { token, activationCode };
 };
-
 
 const activateLandlordAccount = asyncHandler(async (req, res) => {
   try {
@@ -170,13 +164,7 @@ const loginLandlord = asyncHandler(async (req, res) => {
     if (landlord && !(await landlord.isPasswordMatched(password))) {
       res.status(403).json({ message: "Wrong email or password." });
     }
-
-    landlord.tokenVersion += 1;
-    await landlord.save();
-    const accessToken = generateAccessToken(
-      landlord._id,
-      landlord.tokenVersion
-    );
+    const accessToken = generateAccessToken(landlord._id);
     const refreshToken = generateRefreshToken(landlord._id);
     landlord.refreshToken = refreshToken;
     await landlord.save();
@@ -202,36 +190,35 @@ const loginLandlord = asyncHandler(async (req, res) => {
   }
 });
 
-const handleRefreshToken = asyncHandler(async (req, res) => {
-  const cookie = req.cookies;
-  if (!cookie?.refreshToken) {
+// Generates new access token from refresh token
+const refreshAccesToken = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.cookies;
+  if (!refreshToken) {
     return res
       .status(401)
-      .json({ message: "You're not logged in. Please log in to continue." });
+      .json({ message: "Refresh token is missing from cookies." });
   }
-  const refreshToken = cookie.refreshToken;
   const landlord = await Landlord.findOne({ refreshToken });
   if (!landlord) {
-    return res
-      .status(401)
-      .json({ message: "You're not logged in. Please log in to continue." });
+    return res.status(401).json({ message: "Invalid refresh token." });
   }
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
     if (landlord.id !== decoded.id) {
       return res
         .status(403)
-        .json({ message: "You're not logged in. Please log in to continue." });
+        .json({ message: "Unauthorized access. Please log in again." });
     }
     const newAccessToken = generateAccessToken(landlord._id);
     req.landlord = landlord;
-    return newAccessToken;
+    res.status(200).json({ accessToken: newAccessToken });
   } catch (error) {
     return res.status(403).json({
-      message: "You're not logged in. Please log in to continue.",
+      message: "Invalid or expired refresh token. Please log in again.",
     });
   }
 });
+
 
 const updatePassword = asyncHandler(async (req, res) => {
   const { _id } = req.landlord;
@@ -441,6 +428,6 @@ module.exports = {
   updatePassword,
   passwordResetToken,
   resetPassword,
-  handleRefreshToken,
+  refreshAccesToken,
   logout,
 };

@@ -3,7 +3,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const PORT = process.env.PORT || 4000;
-const connect = require("./config/databaseConnection");
+const dbConnection = require("./config/dbConnection");
 
 const {
   notFound,
@@ -13,7 +13,7 @@ const {
 app.use(notFound);
 app.use(errorHandlerMiddleware);
 
-connect();
+dbConnection();
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

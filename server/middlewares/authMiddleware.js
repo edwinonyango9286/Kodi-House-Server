@@ -1,27 +1,27 @@
 const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
 const Landlord = require("../models/landlordModel");
-const { handleRefreshToken } = require("../controllers/landlordController");
+const { refreshAccesToken } = require("../controllers/landlordAuthController");
 const Tenant = require("../models/tenantModel");
 const Admin = require("../models/adminModel");
 
 const authMiddleware = asyncHandler(async (req, res, next) => {
-  if (
-    !req?.headers?.authorization ||
-    !req.headers.authorization.startsWith("Bearer")
-  ) {
+  const authorizationHeader = req?.headers?.authorization;
+  if (!authorizationHeader || !authorizationHeader.startsWith("Bearer")) {
     return res.status(401).json({
-      message: "You're not logged in. Please log in to continue.",
+      message:
+        "Authorization header missing or invalid. Please log in to continue.",
     });
   }
-  let accessToken = req.headers.authorization.split(" ")[1];
+  const accessToken = authorizationHeader.split(" ")[1];
   try {
     const decoded = jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET);
     const landlord = await Landlord.findById(decoded.id);
+
     if (!landlord || landlord.tokenVersion !== decoded.tokenVersion) {
-      return res
-        .status(401)
-        .json({ message: "You're not logged in. Please log in to continue." });
+      return res.status(401).json({
+        message: "Invalid token or token version. Please log in to continue.",
+      });
     }
     req.landlord = landlord;
     next();
@@ -31,24 +31,21 @@ const authMiddleware = asyncHandler(async (req, res, next) => {
       error.name === "JsonWebTokenError"
     ) {
       try {
-        const newAccessToken = await handleRefreshToken(req, res);
+        const newAccessToken = await refreshAccesToken(req, res);
         req.headers.authorization = `Bearer ${newAccessToken}`;
-
         next();
       } catch (err) {
         return res.status(403).json({
-          message: "You're not logged in. Please log in to continue.",
+          message: "Failed to refresh token. Please log in to continue.",
         });
       }
     } else {
-      return res
-        .status(500)
-        .json({ message: "Something went wrong. Please try again later." });
+      return res.status(500).json({
+        message: "Internal server error. Please try again later.",
+      });
     }
   }
 });
-
-
 
 const isTenant = asyncHandler(async (req, res, next) => {
   const { email } = req.tenant;
@@ -94,7 +91,5 @@ const isLandlord = asyncHandler(async (req, res, next) => {
   }
   next();
 });
-
-
 
 module.exports = { isAdmin, authMiddleware, isLandlord, isTenant };

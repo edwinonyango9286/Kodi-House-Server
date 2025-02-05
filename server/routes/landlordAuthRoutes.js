@@ -7,7 +7,8 @@ const {
   passwordResetToken,
   resetPassword,
   logout,
-} = require("../controllers/landlordController");
+  refreshAccesToken,
+} = require("../controllers/landlordAuthController");
 const { authMiddleware } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
@@ -16,6 +17,7 @@ const router = express.Router();
 router.post("/register-new-landlord", registerNewLandlord);
 router.post("/activate-landlord-account", activateLandlordAccount);
 router.post("/login-landlord", loginLandlord);
+router.post("/refresh-access-token", refreshAccesToken);
 router.post("/password-reset-token", passwordResetToken);
 router.post("/logout", authMiddleware, logout);
 
