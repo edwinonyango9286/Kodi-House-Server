@@ -1,6 +1,6 @@
 const asyncHandler = require("express-async-handler");
-import Application from "../models/applocationsModel";
-import validateMongoDbId from "../utils/validateMongoDbId";
+const Application = require("../models/applicationModel");
+const validateMongoDbId = require("../utils/validateMongoDbId");
 
 // create an application
 const createApplication = asyncHandler(async (req, res) => {
@@ -34,7 +34,8 @@ const createApplication = asyncHandler(async (req, res) => {
     if (application) {
       return res.status(201).json({
         status: "SUCCESS",
-        message: "Application created successfully.",
+        message: "Application created successfully",
+        application,
       });
     }
   } catch (error) {
@@ -48,20 +49,15 @@ const createApplication = asyncHandler(async (req, res) => {
 // get application by id
 const getApplication = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  if (!id) {
-    return res
-      .status(400)
-      .json({ message: "Please provide an application Id" });
-  }
   validateMongoDbId(id);
   try {
-    const application = Application.findById(id);
+    const application = Application.findById({ id });
     if (!application) {
-      return res.status(404).json({ message: "Application not found." });
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Application not found." });
     }
-    if (application) {
-      return res.status(200).json({ application, success: true });
-    }
+    return res.status(200).json({ status: "SUCCESS", application });
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
@@ -70,12 +66,13 @@ const getApplication = asyncHandler(async (req, res) => {
   }
 });
 
-// get all applications
-
+// get all applications related to a particular landlord
 const getAllApplications = asyncHandler(async (req, res) => {
+  const { _id } = req.landlord;
+  validateMongoDbId(_id);
   try {
-    const applications = Application.find();
-    return res.status(200).json({ success: true, applications });
+    const applications = await Application.find({ createdBy: _id });
+    return res.status(200).json({ status: "SUCCESS", applications });
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
@@ -86,23 +83,21 @@ const getAllApplications = asyncHandler(async (req, res) => {
 
 // update application by id
 const updateApplication = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  if (!id) {
-    return res
-      .status(400)
-      .json({ message: "Please provide an application Id" });
-  }
-  validateMongoDbId(id);
-
+  const { applicationId } = req.params;
+  validateMongoDbId(applicationId);
   try {
-    const updatedApplication = Application.findByIdAndUpdate(id);
+    const updatedApplication = Application.findByIdAndUpdate({ applicationId });
     if (updatedApplication) {
-      return res
-        .status(200)
-        .json({ success: true, message: "Application updated successfully." });
+      return res.status(200).json({
+        status: "SUCCESS",
+        message: "Application updated successfully.",
+        updatedApplication,
+      });
     }
     if (!updatedApplication) {
-      return res.status(404).json({ message: "Application not found." });
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Application not found." });
     }
   } catch (error) {
     return res.status(500).json({
@@ -115,21 +110,20 @@ const updateApplication = asyncHandler(async (req, res) => {
 // delete application by id
 const deleteApplication = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  if (!id) {
-    return res
-      .status(400)
-      .json({ message: "Please provide an application id." });
-  }
   validateMongoDbId(id);
   try {
     const deletedApplication = Application.findByIdAndDelete(id);
     if (deletedApplication) {
-      return res
-        .status(200)
-        .json({ success: true, message: "Application deleted successfully." });
+      return res.status(200).json({
+        status: "SUCCESS",
+        message: "Application deleted successfully.",
+        deletedApplication,
+      });
     }
     if (!deletedApplication) {
-      return res.status(404).json({ message: "Application not found." });
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Application not found." });
     }
   } catch (error) {
     return res.status(500).json({

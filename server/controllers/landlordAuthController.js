@@ -136,7 +136,7 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
   }
 });
 
-const loginLandlord = asyncHandler(async (req, res) => {
+const sigInLandlord = asyncHandler(async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -190,6 +190,22 @@ const loginLandlord = asyncHandler(async (req, res) => {
   }
 });
 
+const getLandlordById = asyncHandler(async (req, res) => {
+  const { landlordId } = req.params;
+  validateMongoDbId(landlordId);
+  try {
+    const landlord = await Landlord.findById(landlordId);
+    if (!landlord) {
+      return res.status(404).json({
+        message: "Landlord not found.",
+      });
+    }
+    return res.status(200).json({ status: "SUCCESS", landlord });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+});
+
 // Generates new access token from refresh token
 const refreshAccesToken = asyncHandler(async (req, res) => {
   const { refreshToken } = req.cookies;
@@ -218,7 +234,6 @@ const refreshAccesToken = asyncHandler(async (req, res) => {
     });
   }
 });
-
 
 const updatePassword = asyncHandler(async (req, res) => {
   const { _id } = req.landlord;
@@ -424,7 +439,8 @@ const logout = asyncHandler(async (req, res) => {
 module.exports = {
   registerNewLandlord,
   activateLandlordAccount,
-  loginLandlord,
+  sigInLandlord,
+  getLandlordById,
   updatePassword,
   passwordResetToken,
   resetPassword,

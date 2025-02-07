@@ -10,7 +10,7 @@ const landlordSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 50,
       trim: true,
-      lowercase:true,
+      lowercase: true,
     },
 
     firstName: {
@@ -61,6 +61,7 @@ const landlordSchema = new mongoose.Schema(
     },
     role: {
       type: String,
+      enum: ["landlord"],
       default: "landlord",
     },
 
@@ -136,11 +137,16 @@ const landlordSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      trim: true,
     },
     refreshToken: {
       type: String,
       unique: true,
+    },
+
+    landlordState: {
+      type: String,
+      enum: ["Deleted", "Active", "Inactive"],
+      default: "Active",
     },
     passwordChagedAt: Date,
     passwordResetToken: String,

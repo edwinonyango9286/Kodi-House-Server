@@ -2,6 +2,18 @@
 const mongoose = require("mongoose");
 
 const applicationsSchema = new mongoose.Schema({
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref:"Landlord",
+    required: true,
+    validate: {
+      validator: function (id) {
+        return mongoose.Schema.Types.ObjectId.isValid(id);
+      },
+      message: (props) => `${props.value} is not a valid objectId`,
+    },
+  },
+
   firstName: {
     type: String,
     required: true,
@@ -31,7 +43,7 @@ const applicationsSchema = new mongoose.Schema({
   property: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref:"Property",
+      ref: "Property",
       required: true,
       validate: {
         validator: function (id) {
@@ -41,10 +53,9 @@ const applicationsSchema = new mongoose.Schema({
       },
     },
   ],
-
   unit: {
     type: mongoose.Schema.Types.ObjectId,
-    ref:"Unit",
+    ref: "Unit",
     required: true,
     validate: {
       validator: function (id) {

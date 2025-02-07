@@ -1,8 +1,20 @@
 const mongoose = require("mongoose");
-const { validate } = require("./landlordModel");
 
 const userSchema = new mongoose.Schema(
   {
+    // landlord who adds the user
+    addedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Landlord",
+      required: true,
+      validate: {
+        validator: function (id) {
+          return mongoose.Schema.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid ObjectId.`,
+      },
+    },
+
     firstName: {
       type: String,
       required: true,
@@ -23,6 +35,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      unique: true,
       lowercase: true,
       minlength: 2,
       maxlength: 50,
@@ -32,25 +45,35 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    role: {
-      type: String,
-      required: true,
-      enum: ["Agent", "Cleaner", "Security Officer"],
-    },
+
+    // one user can have more than one role
+    roles: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Role",
+        required: true,
+        validate: {
+          validator: function (id) {
+            return mongoose.Schema.Types.ObjectId.isValid(id);
+          },
+          message: (props) => `${props.value} is not a valid ObjectId.`,
+        },
+      },
+    ],
+
     status: {
       type: String,
       enum: ["Active", "Disabled"],
       default: "Disabled",
     },
-
     description: {
       type: String,
       required: true,
       trim: true,
       minlength: 2,
       maxlength: 2000,
+      lowercase: true,
     },
-
     properties: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -66,8 +89,8 @@ const userSchema = new mongoose.Schema(
     ],
     units: [
       {
-            type: mongoose.Schema.Types.ObjectId,
-          ref:"Unit",
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Unit",
         required: true,
         validate: {
           validator: function (id) {
@@ -77,6 +100,12 @@ const userSchema = new mongoose.Schema(
         },
       },
     ],
+
+    userState: {
+      type: String,
+      enum: ["Active", "Inactive", "Deleted"],
+      default: "Active",
+    },
   },
   {
     timestamps: true,
