@@ -5,7 +5,7 @@ const {
   getApplication,
   getAllApplications,
   deleteApplication,
-} = require("../controllers/applicationControllers");
+} = require("../controllers/applicationController");
 const { landlordAuthMiddleware, isLandlord } = require("../middlewares/authMiddleware");
 
 const router = express.Router();

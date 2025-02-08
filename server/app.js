@@ -13,6 +13,7 @@ const cors = require("cors");
 const landlordAuthRouter = require("./routes/landlordAuthRoutes");
 const tenantAuthRouter = require("./routes/tenantAuthRoutes");
 const applicationRouter = require("./routes/applicationRoutes");
+const roleRouter = require("./routes/roleRoutes");
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -55,8 +56,9 @@ app.use(bodyParser.urlencoded({ limit: "5mb", extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-app.use("/api/landlord", landlordAuthRouter);
-app.use("/api/tenant", tenantAuthRouter);
-app.use("/api/application", applicationRouter);
+app.use("/api/v1/landlord", landlordAuthRouter);
+app.use("/api/v1/tenant", tenantAuthRouter);
+app.use("/api/v1/application", applicationRouter);
+app.use("/api/v1/role", roleRouter);
 
 module.exports = app;

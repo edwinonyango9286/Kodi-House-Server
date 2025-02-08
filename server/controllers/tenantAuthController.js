@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const sendMail = require("../utils/sendMails");
 const ejs = require("ejs");
 const path = require("path");
+const { generateAccessToken } = require("../config/accessToken");
 
 const registerNewTenant = asyncHandler(async (req, res) => {
   try {
@@ -60,7 +61,7 @@ const registerNewTenant = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -84,7 +85,7 @@ const createActivationToken = (tenant) => {
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 };
@@ -136,7 +137,7 @@ const activateTenantAccount = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -185,30 +186,34 @@ const loginTenant = asyncHandler(async (req, res) => {
   });
 });
 
-const handleRefreshToken = asyncHandler(async (req, res) => {
+const refreshTenantAccessToken = asyncHandler(async (req, res) => {
   const { refreshToken } = req.cookies;
   if (!refreshToken) {
+    return res.status(401).json({
+      status: "FAILED",
+      message: "Refresh token is missing from cookies.",
+    });
+  }
+  const tenant = await Tenant.findOne({ refreshToken });
+  if (!tenant) {
     return res
       .status(401)
-      .json({ message: "Refresh token is missing from cookies." });
-  }
-  const landlord = await Landlord.findOne({ refreshToken });
-  if (!landlord) {
-    return res.status(401).json({ message: "Invalid refresh token." });
+      .json({ status: "FAILED", message: "Invalid refresh token." });
   }
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-
-    if (landlord.id !== decoded.id) {
-      return res
-        .status(403)
-        .json({ message: "Unauthorized access. Please log in again." });
+    if (tenant.id !== decoded.id) {
+      return res.status(403).json({
+        status: "FAILED",
+        message: "Unauthorized access. Please log in again.",
+      });
     }
-    const newAccessToken = generateAccessToken(landlord._id);
-    req.landlord = landlord;
-    res.status(200).json({ accessToken: newAccessToken });
+    const newAccessToken = generateAccessToken(tenant._id);
+    req.tenant = tenant;
+    return newAccessToken; // Return new access token
   } catch (error) {
     return res.status(403).json({
+      status: "FAILED",
       message: "Invalid or expired refresh token. Please log in again.",
     });
   }
@@ -327,9 +332,10 @@ const logout = asyncHandler(async (req, res) => {
   try {
     const cookie = req.cookies;
     if (!cookie.refreshToken) {
-      return res
-        .status(401)
-        .json({ message: "We could not find refresh token in cookies." });
+      return res.status(401).json({
+        status: "FAILED",
+        message: "Refresh token is missing from cookies.",
+      });
     }
     const refreshToken = cookie.refreshToken;
     const tenant = await Tenant.findOne({ refreshToken });
@@ -339,10 +345,12 @@ const logout = asyncHandler(async (req, res) => {
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
       });
-      return res
-        .status(200)
-        .json({ message: "You have successfully logged out." });
+      return res.status(200).json({
+        status: "SUCCESS",
+        message: "You have successfully logged out.",
+      });
     }
+    // remove refresh token from the tenant document
     await Tenant.findOneAndUpdate(
       { refreshToken },
       {
@@ -354,13 +362,14 @@ const logout = asyncHandler(async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });
-    return res
-      .status(200)
-      .json({ message: "You have successfully logged out." });
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "You have successfully logged out.",
+    });
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -370,7 +379,7 @@ module.exports = {
   activateTenantAccount,
   loginTenant,
   updatePassword,
-  handleRefreshToken,
+  refreshTenantAccessToken,
   passwordResetToken,
   logout,
 };

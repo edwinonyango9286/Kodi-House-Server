@@ -68,7 +68,6 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
 });
 
 //create landlord activation token
-
 const createActivationToken = (landlord) => {
   const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
   const token = jwt.sign(
@@ -131,7 +130,7 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -172,6 +171,7 @@ const sigInLandlord = asyncHandler(async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
+      // refresh token will be removed from cookies in 7 days.
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     });
     return res.status(200).json({
@@ -185,7 +185,7 @@ const sigInLandlord = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -206,30 +206,36 @@ const getLandlordById = asyncHandler(async (req, res) => {
   }
 });
 
-// Generates new access token from refresh token
-const refreshAccesToken = asyncHandler(async (req, res) => {
+// Generates new access token from refresh token for the landlord
+const refreshLandlordAccesToken = asyncHandler(async (req, res) => {
   const { refreshToken } = req.cookies;
   if (!refreshToken) {
-    return res
-      .status(401)
-      .json({ message: "Refresh token is missing from cookies." });
+    return res.status(400).json({
+      status: "FAILED",
+      // if refresh token is missing from cookies it means the refresh token has expired has been removed from cookies
+      message: "Refresh token is missing from cookies.",
+    });
   }
   const landlord = await Landlord.findOne({ refreshToken });
   if (!landlord) {
-    return res.status(401).json({ message: "Invalid refresh token." });
+    return res
+      .status(400)
+      .json({ status: "FAILED", message: "Invalid refresh token." });
   }
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
     if (landlord.id !== decoded.id) {
-      return res
-        .status(403)
-        .json({ message: "Unauthorized access. Please log in again." });
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Unauthorized access. Please log in again.",
+      });
     }
     const newAccessToken = generateAccessToken(landlord._id);
     req.landlord = landlord;
-    res.status(200).json({ accessToken: newAccessToken });
+    return newAccessToken; // Return the new access token
   } catch (error) {
-    return res.status(403).json({
+    return res.status(500).json({
+      status: "FAILED",
       message: "Invalid or expired refresh token. Please log in again.",
     });
   }
@@ -301,7 +307,7 @@ const passwordResetToken = asyncHandler(async (req, res) => {
     if (!email) {
       return res
         .status(400)
-        .json({ message: "Please provide your email address." });
+        .json({ message: "Please provide your email address.landlord" });
     }
 
     if (!emailValidator.validate(email)) {
@@ -349,9 +355,10 @@ const resetPassword = asyncHandler(async (req, res) => {
   try {
     const { password, confirmPassword } = req.body;
     if (!password || !confirmPassword) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all the required fields." });
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide all the required fields.",
+      });
     }
     validatePassword(password);
     validatePassword(confirmPassword);
@@ -369,8 +376,7 @@ const resetPassword = asyncHandler(async (req, res) => {
     });
     if (!landlord) {
       return res.status(400).json({
-        message:
-          "Something went wrong. Please try initiating the password reset process again.",
+        message: "Invalid or expired password reset token. Please try again.",
       });
     }
     if (await landlord.isPasswordMatched(password)) {
@@ -389,7 +395,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -398,9 +404,10 @@ const logout = asyncHandler(async (req, res) => {
   try {
     const cookie = req.cookies;
     if (!cookie.refreshToken) {
-      return res
-        .status(401)
-        .json({ message: "We could not find refresh token in cookies." });
+      return res.status(401).json({
+        status: "FAILED",
+        message: "We could not find refresh token in cookies.",
+      });
     }
     const refreshToken = cookie.refreshToken;
     const landlord = await Landlord.findOne({ refreshToken });
@@ -410,9 +417,10 @@ const logout = asyncHandler(async (req, res) => {
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
       });
-      return res
-        .status(200)
-        .json({ message: "You have successfully logged out." });
+      return res.status(200).json({
+        status: "SUCCESS",
+        message: "You have successfully logged out.",
+      });
     }
     await Landlord.findOneAndUpdate(
       { refreshToken },
@@ -425,13 +433,14 @@ const logout = asyncHandler(async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });
-    return res
-      .status(200)
-      .json({ message: "You have successfully logged out." });
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "You have successfully logged out.",
+    });
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
+      message: error.message,
     });
   }
 });
@@ -444,6 +453,6 @@ module.exports = {
   updatePassword,
   passwordResetToken,
   resetPassword,
-  refreshAccesToken,
+  refreshLandlordAccesToken,
   logout,
 };
