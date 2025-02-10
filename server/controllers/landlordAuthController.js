@@ -14,16 +14,18 @@ const Landlord = require("../models/landlordModel");
 //register a landlord
 const registerNewLandlord = asyncHandler(async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all the required fields." });
+    const { name, email, password, termsAndConditionsAccepted } = req.body;
+    if (!name || !email || !password || !termsAndConditionsAccepted) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide all the required fields.",
+      });
     }
     if (!emailValidator.validate(email)) {
-      return res
-        .status(400)
-        .json({ message: "Please provide a valid email address." });
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide a valid email address.",
+      });
     }
     validatePassword(password);
 
@@ -39,6 +41,7 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
       name,
       email,
       password,
+      termsAndConditionsAccepted,
     };
     const activationToken = createActivationToken(newLandlord);
     const activationCode = activationToken.activationCode;
@@ -106,7 +109,8 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
     if (newLandlord.activationCode !== activationCode) {
       return res.status(400).json({ message: "Invalid activation code" });
     }
-    const { name, email, password } = newLandlord.landlord;
+    const { name, email, password, termsAndConditionsAccepted } =
+      newLandlord.landlord;
 
     const existingLandlord = await Landlord.findOne({ email });
     if (existingLandlord) {
@@ -119,11 +123,12 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
       name,
       email,
       password,
+      termsAndConditionsAccepted,
       role: "landlord",
     });
 
     return res.status(201).json({
-      success: true,
+      status: "SUCCESS",
       message:
         "Your account has been successfully activated. Please proceed to log in.",
     });
@@ -149,7 +154,7 @@ const sigInLandlord = asyncHandler(async (req, res) => {
         .json({ message: "Please provide a valid email address." });
     }
     validatePassword(password);
-    const landlord = await Landlord.findOne({ email });
+    const landlord = await Landlord.findOne({ email }).select("+password");
 
     if (!landlord) {
       return res.status(403).json({
@@ -187,22 +192,6 @@ const sigInLandlord = asyncHandler(async (req, res) => {
       status: "FAILED",
       message: error.message,
     });
-  }
-});
-
-const getLandlordById = asyncHandler(async (req, res) => {
-  const { landlordId } = req.params;
-  validateMongoDbId(landlordId);
-  try {
-    const landlord = await Landlord.findById(landlordId);
-    if (!landlord) {
-      return res.status(404).json({
-        message: "Landlord not found.",
-      });
-    }
-    return res.status(200).json({ status: "SUCCESS", landlord });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
   }
 });
 
@@ -449,7 +438,6 @@ module.exports = {
   registerNewLandlord,
   activateLandlordAccount,
   sigInLandlord,
-  getLandlordById,
   updatePassword,
   passwordResetToken,
   resetPassword,

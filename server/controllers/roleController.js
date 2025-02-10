@@ -23,7 +23,7 @@ const addARole = expressAsyncHandler(async (req, res) => {
     const createdRole = await Role.create({
       ...req.body,
       name: _.capitalize(name),
-      createdBy: _id,
+      landlord: _id,
     });
     if (createdRole) {
       return res.status(201).json({
@@ -45,7 +45,7 @@ const getARole = expressAsyncHandler(async (req, res) => {
     validateMongoDbId(_id);
     validateMongoDbId(roleId);
     // find a role related to that particular landlord
-    const role = await Role.findOne({ _id: roleId, createdBy: _id });
+    const role = await Role.findOne({ _id: roleId, landlord: _id });
     if (!role) {
       return res
         .status(404)
@@ -74,7 +74,7 @@ const updateARole = expressAsyncHandler(async (req, res) => {
       });
     }
     const updatedRole = await Role.findOneAndUpdate(
-      { _id: roleId, createdBy: _id },
+      { _id: roleId, landlord: _id },
       { ...req.body, name: _.capitalize(name) },
       {
         new: true,
@@ -104,7 +104,7 @@ const getAllRoles = expressAsyncHandler(async (req, res) => {
   try {
     const { _id } = req.landlord;
     validateMongoDbId(_id);
-    const roles = await Role.find({ createdBy: _id });
+    const roles = await Role.find({ landlord: _id });
     return res.status(200).json({ status: "SUCCESS", roles });
   } catch (error) {
     return res.status(500).json({
@@ -114,7 +114,10 @@ const getAllRoles = expressAsyncHandler(async (req, res) => {
   }
 });
 
-// delete a role
+// delete a role=> still thinking of how to handle deletion.
+// casecading, soft deletion
+
+
 
 module.exports = {
   addARole,

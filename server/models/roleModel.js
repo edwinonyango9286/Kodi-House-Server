@@ -2,7 +2,8 @@ const mongoose = require("mongoose");
 
 const roleSchema = new mongoose.Schema(
   {
-    createdBy: {
+    // landlord adding the role
+    landlord: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Landlord",
       required: true,

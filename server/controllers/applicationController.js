@@ -71,7 +71,7 @@ const getAllApplications = asyncHandler(async (req, res) => {
   const { _id } = req.landlord;
   validateMongoDbId(_id);
   try {
-    const applications = await Application.find({ createdBy: _id });
+    const applications = await Application.find({ landlord: _id });
     return res.status(200).json({ status: "SUCCESS", applications });
   } catch (error) {
     return res.status(500).json({

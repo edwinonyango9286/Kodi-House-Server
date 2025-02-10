@@ -64,7 +64,6 @@ const landlordSchema = new mongoose.Schema(
       enum: ["landlord"],
       default: "landlord",
     },
-
     avatar: {
       secure_url: {
         type: String,
@@ -106,6 +105,20 @@ const landlordSchema = new mongoose.Schema(
       },
     ],
 
+    units: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        default: [],
+        ref: "Unit",
+        validate: {
+          validator: function (id) {
+            return mongoose.Types.ObjectId.isValid(id);
+          },
+          message: (props) => `${props.value} is not a valid ObjectId.`,
+        },
+      },
+    ],
+
     tenants: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -119,7 +132,6 @@ const landlordSchema = new mongoose.Schema(
         },
       },
     ],
-
     applications: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -134,19 +146,57 @@ const landlordSchema = new mongoose.Schema(
       },
     ],
 
+    invoices: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Invoice",
+        default: [],
+        validate: {
+          validator: function (id) {
+            return mongoose.Types.ObjectId.isValid(id);
+          },
+          message: (props) => `${props.value} is not a valid ObjectId.`,
+        },
+      },
+    ],
+
+    roles: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Role",
+        default: [],
+        validate: {
+          validator: function (id) {
+            return mongoose.Types.ObjectId.isValid(id);
+          },
+          message: (props) => `${props.value} is not a valid ObjectId.`,
+        },
+      },
+    ],
+
     password: {
       type: String,
       required: true,
+      select: false,
     },
     refreshToken: {
       type: String,
       unique: true,
+      default: "",
     },
 
     landlordState: {
       type: String,
       enum: ["Deleted", "Active", "Inactive"],
       default: "Active",
+    },
+    termsAndConditionsAccepted: {
+      type: Boolean,
+      required: true,
+    },
+    termsAndConditionsAcceptedAt: {
+      type: Date,
+      default: Date.now(),
     },
     passwordChagedAt: Date,
     passwordResetToken: String,

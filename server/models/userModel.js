@@ -3,13 +3,13 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema(
   {
     // landlord who adds the user
-    addedBy: {
+    landlord: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Landlord",
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props.value} is not a valid ObjectId.`,
       },
@@ -54,7 +54,7 @@ const userSchema = new mongoose.Schema(
         required: true,
         validate: {
           validator: function (id) {
-            return mongoose.Schema.Types.ObjectId.isValid(id);
+            return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid ObjectId.`,
         },
@@ -81,7 +81,7 @@ const userSchema = new mongoose.Schema(
         ref: "Property",
         validate: {
           validator: function (id) {
-            return mongoose.Schema.Types.ObjectId.isValid(id);
+            return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid ObjectId.`,
         },
@@ -94,7 +94,7 @@ const userSchema = new mongoose.Schema(
         required: true,
         validate: {
           validator: function (id) {
-            return mongoose.Schema.Types.ObjectId.isValid(id);
+            return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid ObjectId.`,
         },

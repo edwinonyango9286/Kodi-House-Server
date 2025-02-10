@@ -2,7 +2,7 @@
 const mongoose = require("mongoose");
 
 const applicationsSchema = new mongoose.Schema({
-  createdBy: {
+  landlord: {
     type: mongoose.Schema.Types.ObjectId,
     ref:"Landlord",
     required: true,

@@ -44,7 +44,6 @@ const propertySchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
     videos: [
       {
         secure_url: {
@@ -57,12 +56,10 @@ const propertySchema = new mongoose.Schema(
         },
       },
     ],
-
     googleMap: {
       type: String,
       required: true,
     },
-
     images: [
       {
         secure_url: {

@@ -14,6 +14,7 @@ const landlordAuthRouter = require("./routes/landlordAuthRoutes");
 const tenantAuthRouter = require("./routes/tenantAuthRoutes");
 const applicationRouter = require("./routes/applicationRoutes");
 const roleRouter = require("./routes/roleRoutes");
+const landlordRouter = require("./routes/landlordRoutes")
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -56,9 +57,10 @@ app.use(bodyParser.urlencoded({ limit: "5mb", extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-app.use("/api/v1/landlord", landlordAuthRouter);
-app.use("/api/v1/tenant", tenantAuthRouter);
+app.use("/api/v1/landlord/auth", landlordAuthRouter);
+app.use("/api/v1/tenant/auth", tenantAuthRouter);
 app.use("/api/v1/application", applicationRouter);
 app.use("/api/v1/role", roleRouter);
+app.use("/api/v1/landlord", landlordRouter)
 
 module.exports = app;
