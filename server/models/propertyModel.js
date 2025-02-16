@@ -2,6 +2,17 @@ const mongoose = require("mongoose");
 
 const propertySchema = new mongoose.Schema(
   {
+    landlord: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Landlord",
+      required: true,
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
     name: {
       type: String,
       required: true,
@@ -21,7 +32,7 @@ const propertySchema = new mongoose.Schema(
         default: [],
         validate: {
           validator: function (id) {
-            return mongoose.Schema.Types.ObjectId.isValid(id);
+            return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid objectId`,
         },
@@ -40,7 +51,7 @@ const propertySchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    decsription: {
+    description: {
       type: String,
       required: true,
     },
@@ -48,11 +59,9 @@ const propertySchema = new mongoose.Schema(
       {
         secure_url: {
           type: String,
-          required: true,
         },
         public_id: {
           type: String,
-          required: true,
         },
       },
     ],
@@ -146,7 +155,6 @@ const propertySchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-
     location: {
       type: String,
       maxlength: 2,
@@ -154,7 +162,7 @@ const propertySchema = new mongoose.Schema(
       required: true,
       lowercase: true,
     },
-    status: {
+    currentStatus: {
       type: String,
       enum: ["Occupied", "Vacant"],
       required: true,

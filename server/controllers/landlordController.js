@@ -20,7 +20,6 @@ const getALandlordWithAllRelatedData = expressAsyncHandler(async (req, res) => {
         .status(404)
         .json({ status: "FAILED", message: "Landlord not found." });
     }
-
     // removes refresh token from the landlord
     const { refreshToken, ...landlordWithoutRefreshToken } =
       landlord.toObject();
@@ -35,5 +34,3 @@ const getALandlordWithAllRelatedData = expressAsyncHandler(async (req, res) => {
 module.exports = {
   getALandlordWithAllRelatedData,
 };
-
-

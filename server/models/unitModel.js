@@ -2,13 +2,24 @@ const mongoose = require("mongoose");
 
 const unitSchema = new mongoose.Schema(
   {
+    landlord: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Landlord",
+      required: true,
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props} is not a valid objectId`,
+      },
+    },
     property: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Property",
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props} is not a valid objectId`,
       },
@@ -17,7 +28,7 @@ const unitSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    rent: {
+    rentPerMonth: {
       type: Number,
       required: true,
     },
@@ -29,6 +40,12 @@ const unitSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tag",
       required: true,
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props} is not a valid objectId`,
+      },
     },
     description: {
       type: String,
@@ -42,11 +59,9 @@ const unitSchema = new mongoose.Schema(
       {
         secure_url: {
           type: String,
-          required: true,
         },
         public_id: {
           type: String,
-          required: true,
         },
       },
     ],
