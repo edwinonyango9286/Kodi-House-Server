@@ -4,12 +4,17 @@ const session = require("express-session");
 const dotenv = require("dotenv");
 dotenv.config();
 const passport = require("passport");
-const landlordRouter = require("./routes/landlordRoutes");
-const tenantRouter = require("./routes/tenantRoutes");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const cors = require("cors");
+
+// routers
+const landlordAuthRouter = require("./routes/landlordAuthRoutes");
+const tenantAuthRouter = require("./routes/tenantAuthRoutes");
+const applicationRouter = require("./routes/applicationRoutes");
+const roleRouter = require("./routes/roleRoutes");
+const landlordRouter = require("./routes/landlordRoutes")
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -52,7 +57,10 @@ app.use(bodyParser.urlencoded({ limit: "5mb", extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-app.use("/api/landlord", landlordRouter);
-app.use("/api/tenant", tenantRouter);
+app.use("/api/v1/landlord/auth", landlordAuthRouter);
+app.use("/api/v1/tenant/auth", tenantAuthRouter);
+app.use("/api/v1/application", applicationRouter);
+app.use("/api/v1/role", roleRouter);
+app.use("/api/v1/landlord", landlordRouter)
 
 module.exports = app;

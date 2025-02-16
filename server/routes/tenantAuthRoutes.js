@@ -3,7 +3,7 @@ const {
   registerNewTenant,
   activateTenantAccount,
   loginTenant,
-} = require("../controllers/tenantController");
+} = require("../controllers/tenantAuthController");
 
 const router = express.Router();
 

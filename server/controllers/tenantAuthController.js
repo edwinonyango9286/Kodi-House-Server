@@ -1,11 +1,12 @@
 const asyncHandler = require("express-async-handler");
 const emailValidator = require("email-validator");
 const validatePassword = require("../utils/validatePassword");
-const Tenant = require("../models/tenantsModel");
+const Tenant = require("../models/tenantModel");
 const jwt = require("jsonwebtoken");
 const sendMail = require("../utils/sendMails");
 const ejs = require("ejs");
 const path = require("path");
+const { generateAccessToken } = require("../config/accessToken");
 
 const registerNewTenant = asyncHandler(async (req, res) => {
   try {
@@ -58,12 +59,11 @@ const registerNewTenant = asyncHandler(async (req, res) => {
       activationToken: activationToken?.token,
     });
   } catch (error) {
-    return res
-    .status(500)
-    .json({
+    return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
-    });  }
+      message: error.message,
+    });
+  }
 });
 
 //create tenant activation token
@@ -83,12 +83,11 @@ const createActivationToken = (tenant) => {
     );
     return { token, activationCode };
   } catch (error) {
-    return res
-    .status(500)
-    .json({
+    return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
-    });  }
+      message: error.message,
+    });
+  }
 };
 
 const activateTenantAccount = asyncHandler(async (req, res) => {
@@ -136,12 +135,11 @@ const activateTenantAccount = asyncHandler(async (req, res) => {
         "Your account has been successfully activated. Please proceed to log in.",
     });
   } catch (error) {
-    return res
-    .status(500)
-    .json({
+    return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
-    });  }
+      message: error.message,
+    });
+  }
 });
 
 const loginTenant = asyncHandler(async (req, res) => {
@@ -167,9 +165,8 @@ const loginTenant = asyncHandler(async (req, res) => {
   if (tenant && !(await tenant.isPasswordMatched(password))) {
     res.status(403).json({ message: "Wrong email or password." });
   }
-  tenant.tokenVersion += 1;
-  await tenant.save();
-  const accessToken = generateAccessToken(tenant._id, tenant.tokenVersion);
+
+  const accessToken = generateAccessToken(tenant._id);
   const refreshToken = generateRefreshToken(tenant._id);
   tenant.refreshToken = refreshToken;
   await tenant.save();
@@ -189,33 +186,35 @@ const loginTenant = asyncHandler(async (req, res) => {
   });
 });
 
-const handleRefreshToken = asyncHandler(async (req, res) => {
-  const cookie = req.cookies;
-  if (!cookie?.refreshToken) {
-    return res
-      .status(401)
-      .json({ message: "You're not logged in. Please log in to continue." });
+const refreshTenantAccessToken = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.cookies;
+  if (!refreshToken) {
+    return res.status(401).json({
+      status: "FAILED",
+      message: "Refresh token is missing from cookies.",
+    });
   }
-  const refreshToken = cookie.refreshToken;
   const tenant = await Tenant.findOne({ refreshToken });
   if (!tenant) {
     return res
       .status(401)
-      .json({ message: "You're not logged in. Please log in to continue." });
+      .json({ status: "FAILED", message: "Invalid refresh token." });
   }
   try {
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
     if (tenant.id !== decoded.id) {
-      return res
-        .status(403)
-        .json({ message: "You're not logged in. Please log in to continue." });
+      return res.status(403).json({
+        status: "FAILED",
+        message: "Unauthorized access. Please log in again.",
+      });
     }
     const newAccessToken = generateAccessToken(tenant._id);
     req.tenant = tenant;
-    return newAccessToken;
+    return newAccessToken; // Return new access token
   } catch (error) {
     return res.status(403).json({
-      message: "You're not logged in. Please log in to continue.",
+      status: "FAILED",
+      message: "Invalid or expired refresh token. Please log in again.",
     });
   }
 });
@@ -322,21 +321,21 @@ const passwordResetToken = asyncHandler(async (req, res) => {
       message: `A password reset link has been sent to ${tenant.email}. Please check your email inbox and follow the instructions to reset your password.`,
     });
   } catch (error) {
-    return res
-    .status(500)
-    .json({
+    return res.status(500).json({
       status: "FAILED",
       message: "The application has experienced an error. Please try again.",
-    });  }
+    });
+  }
 });
 
 const logout = asyncHandler(async (req, res) => {
   try {
     const cookie = req.cookies;
     if (!cookie.refreshToken) {
-      return res
-        .status(401)
-        .json({ message: "We could not find refresh token in cookies." });
+      return res.status(401).json({
+        status: "FAILED",
+        message: "Refresh token is missing from cookies.",
+      });
     }
     const refreshToken = cookie.refreshToken;
     const tenant = await Tenant.findOne({ refreshToken });
@@ -346,10 +345,12 @@ const logout = asyncHandler(async (req, res) => {
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
       });
-      return res
-        .status(200)
-        .json({ message: "You have successfully logged out." });
+      return res.status(200).json({
+        status: "SUCCESS",
+        message: "You have successfully logged out.",
+      });
     }
+    // remove refresh token from the tenant document
     await Tenant.findOneAndUpdate(
       { refreshToken },
       {
@@ -361,24 +362,24 @@ const logout = asyncHandler(async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });
-    return res
-      .status(200)
-      .json({ message: "You have successfully logged out." });
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "You have successfully logged out.",
+    });
   } catch (error) {
-    return res
-    .status(500)
-    .json({
+    return res.status(500).json({
       status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
-    });  }
+      message: error.message,
+    });
+  }
 });
-
 
 module.exports = {
   registerNewTenant,
   activateTenantAccount,
   loginTenant,
-  handleRefreshToken,
+  updatePassword,
+  refreshTenantAccessToken,
   passwordResetToken,
   logout,
 };
