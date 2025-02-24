@@ -14,7 +14,6 @@ const userSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid ObjectId.`,
       },
     },
-
     firstName: {
       type: String,
       required: true,

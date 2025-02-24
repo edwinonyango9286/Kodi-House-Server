@@ -1,21 +1,22 @@
 const asyncHandler = require("express-async-handler");
 const jwt = require("jsonwebtoken");
 const Landlord = require("../models/landlordModel");
-const { refreshLandlordAccesToken } = require("../controllers/landlordAuthController");
+const {
+  refreshLandlordAccesToken,
+} = require("../controllers/landlordAuthController");
 const Tenant = require("../models/tenantModel");
 const Admin = require("../models/adminModel");
-const { refreshTenantAccessToken } = require("../controllers/tenantAuthController");
+const {
+  refreshTenantAccessToken,
+} = require("../controllers/tenantAuthController");
 
-
-
-
-// Auth middleware for landlord  
+// Auth middleware for landlord
 // access new access token should only be generated if the there is an access token
 const landlordAuthMiddleware = asyncHandler(async (req, res, next) => {
   const authorizationHeader = req?.headers?.authorization;
   if (!authorizationHeader || !authorizationHeader.startsWith("Bearer")) {
     return res.status(401).json({
-      message: "Authorization header missing or invalid. Please log in to continue.",
+      message: "Authorization header missing. Please log in to continue.",
     });
   }
   const accessToken = authorizationHeader.split(" ")[1];
@@ -30,27 +31,26 @@ const landlordAuthMiddleware = asyncHandler(async (req, res, next) => {
     req.landlord = landlord;
     next();
   } catch (error) {
-    if (error.name === "TokenExpiredError" || error.name === "JsonWebTokenError") {
+    if (
+      error.name === "TokenExpiredError" ||
+      error.name === "JsonWebTokenError"
+    ) {
       try {
         const newAccessToken = await refreshLandlordAccesToken(req, res); // Get new access token
         req.headers.authorization = `Bearer ${newAccessToken}`; // Set new access token in headers
         next(); // Call next to continue to the next middleware/route handler
       } catch (err) {
         return res.status(403).json({
-          message: "Failed to refresh token. Please log in to continue.",
+          message: "Failed to refresh access token. Please log in to continue.",
         });
       }
     } else {
       return res.status(500).json({
-        message: "Internal server error. Please try again later.",
+        message: "Internal server error. Please try again in a moment.",
       });
     }
   }
 });
-
-
-
-
 
 // Auth middleware for tenants
 const tenantAuthMiddleware = asyncHandler(async (req, res, next) => {

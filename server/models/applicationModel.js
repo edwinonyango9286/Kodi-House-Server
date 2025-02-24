@@ -2,6 +2,7 @@
 const mongoose = require("mongoose");
 
 const applicationsSchema = new mongoose.Schema({
+
   landlord: {
     type: mongoose.Schema.Types.ObjectId,
     ref:"Landlord",
@@ -74,7 +75,7 @@ const applicationsSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["Pending", "Accepted", "Declined"],
+    enum: ["Pending", "Confirmed", "Declined"],
     default: "Pending",
   },
 });

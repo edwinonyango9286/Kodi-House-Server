@@ -28,7 +28,6 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
       });
     }
     validatePassword(password);
-
     // check if the landlord already exist in the database using email.
     const landlord = await Landlord.findOne({ email });
     if (landlord) {
@@ -202,7 +201,7 @@ const refreshLandlordAccesToken = asyncHandler(async (req, res) => {
     return res.status(400).json({
       status: "FAILED",
       // if refresh token is missing from cookies it means the refresh token has expired has been removed from cookies
-      message: "Refresh token is missing from cookies.",
+      message: "Session Expired. Please log in again",
     });
   }
   const landlord = await Landlord.findOne({ refreshToken });

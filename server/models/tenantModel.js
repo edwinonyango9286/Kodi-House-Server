@@ -12,7 +12,6 @@ const tenantSchema = new mongoose.Schema(
       maxlength: 32,
       trim: true,
     },
-
     secondName: {
       type: String,
       required: true,
