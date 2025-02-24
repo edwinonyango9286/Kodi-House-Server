@@ -7,11 +7,14 @@ const sendMail = require("../utils/sendMails");
 const ejs = require("ejs");
 const path = require("path");
 const { generateAccessToken } = require("../config/accessToken");
+const logger = require("../utils/logger");
+
 
 const registerNewTenant = asyncHandler(async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
+      logger.error("Some fileds are not provided.")
       return res
         .status(400)
         .json({ message: "Please provide all the required fields." });

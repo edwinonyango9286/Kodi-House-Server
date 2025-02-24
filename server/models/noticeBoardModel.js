@@ -7,7 +7,6 @@ const noticeBoardSchema = new mongoose.Schema(
       required: true,
       enum: ["Tenants", "CareTakers", "Agents"],
     },
-
     title: {
       type: String,
       required: true,
