@@ -6,6 +6,7 @@ const {
 const {
   getALandlordWithAllRelatedData,
 } = require("../controllers/landlordController");
+const { addTenant } = require("../controllers/tenantControllers");
 
 const router = express.Router();
 
@@ -15,5 +16,7 @@ router.get(
   isLandlord,
   getALandlordWithAllRelatedData
 );
+
+router.post("/add_tenant", landlordAuthMiddleware, isLandlord, addTenant);
 
 module.exports = router;

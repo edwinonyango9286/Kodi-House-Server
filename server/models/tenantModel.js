@@ -4,6 +4,18 @@ const crypto = require("crypto");
 
 const tenantSchema = new mongoose.Schema(
   {
+    landlord: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Landlord",
+      required: true,
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid ObjectId.`,
+      },
+    },
+
     firstName: {
       type: String,
       required: true,
@@ -29,11 +41,13 @@ const tenantSchema = new mongoose.Schema(
       maxlength: 32,
       lowercase: true,
       trim: true,
+      sparse: true,
     },
     phoneNumber: {
       type: String,
       required: true,
       trim: true,
+      unique: true,
     },
 
     role: {
@@ -45,32 +59,10 @@ const tenantSchema = new mongoose.Schema(
       type: Date,
     },
 
-    landlords: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Landlord",
-        required: true,
-        validate: {
-          validator: function (id) {
-            return mongoose.Schema.Types.ObjectId.isValid(id);
-          },
-          message: (props) => `${props.value} is not a valid ObjectId.`,
-        },
-      },
-    ],
-    properties: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Property",
-        required: true,
-        validate: {
-          validator: function (id) {
-            return mongoose.Schema.Types.ObjectId.isValid(id);
-          },
-          message: (props) => `${props.value} is not a valid ObjectId.`,
-        },
-      },
-    ],
+    moveOutDate: {
+      type: Date,
+    },
+
     avatar: {
       secure_url: {
         type: String,
@@ -88,11 +80,44 @@ const tenantSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
+    properties: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Property",
+        validate: {
+          validator: function (id) {
+            return mongoose.Types.ObjectId.isValid(id);
+          },
+          message: (props) => `${props.value} is not a valid ObjectId.`,
+        },
+      },
+    ],
+
+    unit: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Unit",
+        validate: {
+          validator: (id) => {
+            return mongoose.Types.ObjectId(id);
+          },
+          message: (props) => `${props.value} is not a valid ObjectId.`,
+        },
+      },
+    ],
+
+    status: {
+      type: String,
+      enum: ["Active", "Disabled"],
+      default: "Active",
+    },
+
     refreshToken: {
       type: String,
-      require: false,
       unique: true,
       trim: true,
+      sparse: true,
     },
     passwordChagedAt: Date,
     passwordResetToken: String,

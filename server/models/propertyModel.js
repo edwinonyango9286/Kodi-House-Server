@@ -13,6 +13,18 @@ const propertySchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid objectId`,
       },
     },
+
+    currentOccupant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
+
     name: {
       type: String,
       required: true,

@@ -1,6 +1,7 @@
 const Property = require("../models/propertyModel");
 const expressAsyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongoDbId");
+const Tenant = require("../models/tenantModel");
 
 // add a new property
 const addAProperty = expressAsyncHandler(async (req, res) => {
@@ -57,7 +58,6 @@ const addAProperty = expressAsyncHandler(async (req, res) => {
 });
 
 // update a property
-error;
 const updateAproperty = expressAsyncHandler(async (req, res) => {
   try {
     const { _id } = req.landlord;
@@ -115,6 +115,55 @@ const getAllProperties = expressAsyncHandler(async (req, res) => {
   }
 });
 
+// asign a property and to a tenant
+const asignPropertyToAtenant = expressAsyncHandler(async () => {
+  try {
+    const { propertyId } = req.params;
+    const { tenantId } = req.body;
+    validateMongoDbId(propertyId);
+    validateMongoDbId(tenantId);
+    const tenant = await Tenant.findOne({
+      _id: tenantId,
+      landlord: req.landlord._id,
+    });
+    if (!tenant) {
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Tenant not found." });
+    }
+
+    // check if a property is already assigned to another tenant
+    const property = await Property.findById(propertyId);
+    if (property.currentOccupant || property.currentStatus === "Occupied") {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Property already assigned to a tenant.",
+      });
+    }
+    // if property doesn't have  and tenant occupant asign the property to the tenant
+    const assignedProperty = await Property.findOneAndUpdate(
+      { _id: propertyId, currentOccupant: null, currentStatus: "Vacant" },
+      { currentOccupant: tenantId, currentStatus: "Occupied" },
+      { new: true },
+      { runValidators: true }
+    );
+
+    if (!assignedProperty) {
+      return res
+        .status(400)
+        .json({ status: "FAILED", message: "Property not found." });
+    }
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: `${property.name} has been assigned to ${tenant.firstName}`,
+      assignedProperty,
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "FAILED", message: error.message });
+  }
+});
+
 // delete a property
 const deleteAProperty = expressAsyncHandler(async (req, res) => {});
 
@@ -124,4 +173,5 @@ module.exports = {
   getAllProperties,
   updateAproperty,
   deleteAProperty,
+  asignPropertyToAtenant,
 };

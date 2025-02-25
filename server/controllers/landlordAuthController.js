@@ -46,10 +46,6 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
     const activationCode = activationToken.activationCode;
     const data = { newLandlord: { name: newLandlord?.name }, activationCode };
 
-    const html = await ejs.renderFile(
-      path.join(__dirname, "../mail-templates/landlord-activation-mail.ejs"),
-      data
-    );
     await sendMail({
       email: newLandlord?.email,
       subject: "Account Activation",
@@ -314,13 +310,7 @@ const passwordResetToken = asyncHandler(async (req, res) => {
     const token = await landlord.createPasswordResetToken();
     await landlord.save();
     const data = { landlord: { name: landlord.name }, token };
-    const html = await ejs.renderFile(
-      path.join(
-        __dirname,
-        "../mail-templates/landlord-reset-password-token-mail.ejs"
-      ),
-      data
-    );
+
     await sendMail({
       email: landlord.email,
       subject: "Password Reset Link",
