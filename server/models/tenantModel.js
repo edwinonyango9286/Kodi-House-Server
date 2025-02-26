@@ -107,7 +107,7 @@ const tenantSchema = new mongoose.Schema(
       },
     ],
 
-    status: {
+    accountStatus: {
       type: String,
       enum: ["Active", "Disabled"],
       default: "Active",
@@ -118,6 +118,15 @@ const tenantSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       sparse: true,
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
     },
     passwordChagedAt: Date,
     passwordResetToken: String,

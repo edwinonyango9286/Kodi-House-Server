@@ -1,7 +1,7 @@
 const express = require("express");
 const {
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
 } = require("../middlewares/authMiddleware");
 const {
   getALandlordWithAllRelatedData,
@@ -13,10 +13,10 @@ const router = express.Router();
 router.get(
   "/get-landlord-with-all-related-data",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   getALandlordWithAllRelatedData
 );
 
-router.post("/add_tenant", landlordAuthMiddleware, isLandlord, addTenant);
+router.post("/add_tenant", landlordAuthMiddleware, isAValidLandlord, addTenant);
 
 module.exports = router;

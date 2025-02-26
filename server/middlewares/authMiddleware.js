@@ -25,6 +25,7 @@ const landlordAuthMiddleware = asyncHandler(async (req, res, next) => {
     const landlord = await Landlord.findById(decoded.id);
     if (!landlord) {
       return res.status(401).json({
+        status: "FAILED",
         message: "Invalid access token. Please log in to continue.",
       });
     }
@@ -41,12 +42,14 @@ const landlordAuthMiddleware = asyncHandler(async (req, res, next) => {
         next(); // Call next to continue to the next middleware/route handler
       } catch (err) {
         return res.status(403).json({
+          status: "FAILED",
           message: "Failed to refresh access token. Please log in to continue.",
         });
       }
     } else {
       return res.status(500).json({
-        message: "Internal server error. Please try again in a moment.",
+        status: "FAILED",
+        message: error.message,
       });
     }
   }
@@ -57,8 +60,7 @@ const tenantAuthMiddleware = asyncHandler(async (req, res, next) => {
   const authorizationHeader = req?.headers?.authorization;
   if (!authorizationHeader || !authorizationHeader.startsWith("Bearer")) {
     return res.status(401).json({
-      message:
-        "Authorization header missing or invalid. Please log in to continue.",
+      message: "Authorization header missing. Please log in to continue.",
     });
   }
   const accessToken = authorizationHeader.split(" ")[1];
@@ -67,6 +69,7 @@ const tenantAuthMiddleware = asyncHandler(async (req, res, next) => {
     const tenant = await Tenant.findById(decoded.id);
     if (!tenant) {
       return res.status(401).json({
+        status: "FAILED",
         message: "Invalid access token. Please log in to continue.",
       });
     }
@@ -83,12 +86,14 @@ const tenantAuthMiddleware = asyncHandler(async (req, res, next) => {
         next();
       } catch (err) {
         return res.status(403).json({
+          status: "FAILED",
           message: "Failed to refresh token. Please log in to continue.",
         });
       }
     } else {
       return res.status(500).json({
-        message: "Internal server error. Please try again later.",
+        status: "FAILED",
+        message: error.message,
       });
     }
   }
@@ -99,8 +104,8 @@ const adminAuthMiddleware = asyncHandler(async (req, res, next) => {
   const authorizationHeader = req?.headers?.authorization;
   if (!authorizationHeader || !authorizationHeader.startsWith("Bearer")) {
     return res.status(401).json({
-      message:
-        "Authorization header missing or invalid. Please log in to continue.",
+      status: "FAILED",
+      message: "Authorization header missing. Please log in to continue.",
     });
   }
   const accessToken = authorizationHeader.split(" ")[1];
@@ -109,6 +114,7 @@ const adminAuthMiddleware = asyncHandler(async (req, res, next) => {
     const admin = await Admin.findById(decoded.id);
     if (!admin) {
       return res.status(401).json({
+        status: "FAILED",
         message: "Invalid access token. Please log in to continue.",
       });
     }
@@ -125,12 +131,14 @@ const adminAuthMiddleware = asyncHandler(async (req, res, next) => {
         next();
       } catch (err) {
         return res.status(403).json({
+          status: "FAILED",
           message: "Failed to refresh token. Please log in to continue.",
         });
       }
     } else {
       return res.status(500).json({
-        message: "Internal server error. Please try again later.",
+        status: "FAILED",
+        message: error.message,
       });
     }
   }
@@ -166,15 +174,14 @@ const isTenant = asyncHandler(async (req, res, next) => {
   next();
 });
 
-// ensures the user is a landlord and landlord status is active
-const isLandlord = asyncHandler(async (req, res, next) => {
+// ensures the landlord is a valid landlord => This is achieved by checking landlord role, landlord account status landlord account verification status
+const isAValidLandlord = asyncHandler(async (req, res, next) => {
   const { email } = req.landlord;
   const landlord = await Landlord.findOne({ email });
   if (!landlord) {
     return res.status(404).json({
       status: "FAILED",
-      message:
-        "We couldn't find a landlord account associated with this email address. Please double-check your email address and try again.",
+      message: "Landlord not found.",
     });
   }
   if (landlord.role !== "landlord") {
@@ -182,15 +189,16 @@ const isLandlord = asyncHandler(async (req, res, next) => {
       .status(403)
       .json({ status: "FAILED", message: "Not authorized." });
   }
-  if (landlord.landlordState === "Inactive") {
+  if (landlord.landlordAccountStatus === "Disabled") {
     return res.status(403).json({
       status: "FAILED",
       message: "Your account has been deactivated.",
     });
   }
-  if (landlord.landlordState === "Deleted") {
+  if (!landlord.isAccountVerrified) {
     return res.status(403).json({
-      message: "Your account has been deleted.",
+      status: "FAILED",
+      message: "Your account has not been verified by admin.",
     });
   }
   next();
@@ -201,6 +209,6 @@ module.exports = {
   landlordAuthMiddleware,
   tenantAuthMiddleware,
   adminAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   isTenant,
 };

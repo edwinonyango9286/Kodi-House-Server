@@ -1,5 +1,8 @@
 const express = require("express");
-const { isLandlord, landlordAuthMiddleware } = require("../middlewares/authMiddleware");
+const {
+  isAValidLandlord,
+  landlordAuthMiddleware,
+} = require("../middlewares/authMiddleware");
 const {
   addAuser,
   getAUserById,
@@ -10,16 +13,31 @@ const {
 
 const router = express.Router();
 
-router.post("/add-user", landlordAuthMiddleware, isLandlord, addAuser);
-router.get("/get-user/:userId", landlordAuthMiddleware, isLandlord, getAUserById);
-router.get("/get-users", landlordAuthMiddleware, isLandlord, getAllLandlordUsers);
-router.put("/update-user/:userId", landlordAuthMiddleware, isLandlord, updateAUserById);
+router.post("/add-user", landlordAuthMiddleware, isAValidLandlord, addAuser);
+router.get(
+  "/get-user/:userId",
+  landlordAuthMiddleware,
+  isAValidLandlord,
+  getAUserById
+);
+router.get(
+  "/get-users",
+  landlordAuthMiddleware,
+  isAValidLandlord,
+  getAllLandlordUsers
+);
+router.put(
+  "/update-user/:userId",
+  landlordAuthMiddleware,
+  isAValidLandlord,
+  updateAUserById
+);
 
 // soft delete user => soft delete users for consistency
 router.delete(
   "/delete-user/:userId",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   softDeleteAUserById
 );
 

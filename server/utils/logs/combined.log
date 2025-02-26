@@ -4,3 +4,5 @@
 {"level":"error","message":"email already exist.","timestamp":"2025-02-25 09:12:43"}
 {"level":"error","message":"email already exist.","timestamp":"2025-02-25 09:12:49"}
 {"level":"error","message":"email already exist.","timestamp":"2025-02-25 15:36:31"}
+{"level":"error","message":"[object Object] is not a valid ObjectId.","timestamp":"2025-02-26 10:10:41"}
+{"level":"error","message":"[object Object] is not a valid ObjectId.","timestamp":"2025-02-26 10:11:25"}

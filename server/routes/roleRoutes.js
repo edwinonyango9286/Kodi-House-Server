@@ -1,7 +1,7 @@
 const express = require("express");
 const {
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
 } = require("../middlewares/authMiddleware");
 const {
   addARole,
@@ -12,15 +12,15 @@ const {
 
 const router = express.Router();
 
-router.post("/add-role", landlordAuthMiddleware, isLandlord, addARole);
-router.get("/get-a-role/:roleId", landlordAuthMiddleware, isLandlord, getARole);
+router.post("/add-role", landlordAuthMiddleware, isAValidLandlord, addARole);
+router.get("/get-a-role/:roleId", landlordAuthMiddleware, isAValidLandlord, getARole);
 router.put(
   "/update-a-role/:roleId",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   updateARole
 );
-router.get("/get-all-roles", landlordAuthMiddleware, isLandlord, getAllRoles);
+router.get("/get-all-roles", landlordAuthMiddleware, isAValidLandlord, getAllRoles);
 router.delete("/delete-role");
 
 module.exports = router;

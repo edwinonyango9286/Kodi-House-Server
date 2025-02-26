@@ -3,35 +3,42 @@ const validateMongoDbId = require("../utils/validateMongoDbId");
 const emailValidator = require("email-validator");
 const validatePassword = require("../utils/validatePassword");
 const jwt = require("jsonwebtoken");
-const path = require("path");
 const sendMail = require("../utils/sendMails");
-const ejs = require("ejs");
 const { generateAccessToken } = require("../config/accessToken");
 const { generateRefreshToken } = require("../config/refreshToken");
 const crypto = require("crypto");
 const Landlord = require("../models/landlordModel");
+const logger = require("../utils/logger");
+const expressAsyncHandler = require("express-async-handler");
+
+// landlord should not deleted their own account=> this function should not be provided in version 1 of the application
 
 //register a landlord
 const registerNewLandlord = asyncHandler(async (req, res) => {
   try {
     const { name, email, password, termsAndConditionsAccepted } = req.body;
+
+    // check for required fields
     if (!name || !email || !password || !termsAndConditionsAccepted) {
       return res.status(400).json({
         status: "FAILED",
         message: "Please provide all the required fields.",
       });
     }
+    // validate email using email validator
     if (!emailValidator.validate(email)) {
       return res.status(400).json({
         status: "FAILED",
         message: "Please provide a valid email address.",
       });
     }
+
     validatePassword(password);
     // check if the landlord already exist in the database using email.
     const landlord = await Landlord.findOne({ email });
     if (landlord) {
       return res.status(409).json({
+        status: "FAILED",
         message:
           "An account with this email address already exists. Please use a different email address or log in to your existing account.",
       });
@@ -58,6 +65,7 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
       activationToken: activationToken?.token,
     });
   } catch (error) {
+    logger.error(error.message);
     return res.status(500).json({
       status: "FAILED",
       message: error.message,
@@ -86,6 +94,7 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
     const { activationToken, activationCode } = req.body;
     if (!activationToken || !activationCode) {
       return res.status(400).json({
+        status: "FAILED",
         message: "Please provide all the required fields.",
       });
     }
@@ -96,13 +105,17 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
       if (err.name === "TokenExpiredError") {
         return res
           .status(400)
-          .json({ message: "Activation token has expired." });
+          .json({ status: "FAILED", message: "Activation token has expired." });
       }
-      return res.status(400).json({ message: "Invalid activation token." });
+      return res
+        .status(400)
+        .json({ status: "FAILED", message: "Invalid activation token." });
     }
 
     if (newLandlord.activationCode !== activationCode) {
-      return res.status(400).json({ message: "Invalid activation code" });
+      return res
+        .status(400)
+        .json({ status: "FAILED", message: "Invalid activation code" });
     }
     const { name, email, password, termsAndConditionsAccepted } =
       newLandlord.landlord;
@@ -110,6 +123,7 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
     const existingLandlord = await Landlord.findOne({ email });
     if (existingLandlord) {
       return res.status(409).json({
+        status: "FAILED",
         message:
           "An account with this email address already exists. Please use a different email address or log in to your existing account.",
       });
@@ -135,30 +149,34 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
   }
 });
 
+
 const sigInLandlord = asyncHandler(async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all the required fields." });
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide all the required fields.",
+      });
     }
     if (!emailValidator.validate(email)) {
-      return res
-        .status(400)
-        .json({ message: "Please provide a valid email address." });
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide a valid email address.",
+      });
     }
     validatePassword(password);
     const landlord = await Landlord.findOne({ email }).select("+password");
 
     if (!landlord) {
       return res.status(403).json({
+        status: "FAILED",
         message:
           "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
       });
     }
     if (landlord && landlord.role !== "landlord") {
-      res.status(401).json({ message: "Not authorised." });
+      return res.status(401).json({ message: "Not authorised." });
     }
     if (landlord && !(await landlord.isPasswordMatched(password))) {
       res.status(403).json({ message: "Wrong email or password." });
@@ -174,12 +192,15 @@ const sigInLandlord = asyncHandler(async (req, res) => {
       // refresh token will be removed from cookies in 7 days.
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     });
+
+    // remove password from the landlord object
+    const landlordData = { ...landlord.toObject() };
+    delete landlordData.password;
+
     return res.status(200).json({
-      _id: landlord._id,
-      name: landlord.name,
-      email: landlord.email,
-      role: landlord.role,
-      avatar: landlord.avatar,
+      status: "SUCCESS",
+      message: "Sign in success",
+      landlord: landlordData,
       accessToken: accessToken,
     });
   } catch (error) {
@@ -187,6 +208,21 @@ const sigInLandlord = asyncHandler(async (req, res) => {
       status: "FAILED",
       message: error.message,
     });
+  }
+});
+
+// get the landlord
+const me = asyncHandler(async (req, res) => {
+  try {
+    const me = await Landlord.findById({ _id: req.landlord._id });
+    if (!me) {
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "User not found." });
+    }
+    return res.status(200).json({ status: "SUCCESS", data: me });
+  } catch (error) {
+    return res.status(500).json({ status: "FAILED", message: error.message });
   }
 });
 
@@ -226,62 +262,54 @@ const refreshLandlordAccesToken = asyncHandler(async (req, res) => {
 });
 
 const updatePassword = asyncHandler(async (req, res) => {
-  const { _id } = req.landlord;
-  const { password, confirmPassword } = req.body;
-
-  if (!password || !confirmPassword) {
-    return res
-      .status(400)
-      .json({ message: "Please fill in all the required fields." });
-  }
   try {
-    validateMongoDbId(_id);
-  } catch (error) {
-    return res.status(400).json({
-      message: "We couldn't find an account associated with this id.",
-    });
-  }
-  try {
+    const { password, confirmPassword } = req.body;
+    if (!password || !confirmPassword) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please fill in all the required fields.",
+      });
+    }
     validatePassword(password);
-  } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
-  }
-
-  try {
     validatePassword(confirmPassword);
-  } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
-  }
-  if (password !== confirmPassword) {
-    return res
-      .status(400)
-      .json({ message: "Password and confirm password values do not match." });
-  }
-  const landlord = await Landlord.findById(_id);
-  if (!landlord) {
-    return res.status(404).json({
-      message: "We couldn't find an account associated with this id.",
-    });
-  }
-  if (await landlord.isPasswordMatched(password)) {
-    return res.status(400).json({
-      message:
-        "Please choose a new password that is different from the old one.",
-    });
-  }
-  landlord.password = password;
-  await landlord.save();
 
-  return res.status(200).json({
-    message:
-      "Your password has been update. Proceed to log in with the new password.",
-  });
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Password and confirm password values do not match.",
+      });
+    }
+    const landlord = await Landlord.findById(req.landlord._id).select(
+      "+password"
+    );
+    if (!landlord) {
+      return res.status(404).json({
+        message: "Landlord not found.",
+      });
+    }
+    if (await landlord.isPasswordMatched(password)) {
+      return res.status(400).json({
+        status: "FAILED",
+        message:
+          "Please choose a new password that is different from the old one.",
+      });
+    }
+    landlord.password = password;
+    await landlord.save();
+
+    // remove password from landlord object
+    const landlordData = { ...landlord.toObject() };
+    delete landlordData.password;
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message:
+        "Your password has been update. Proceed to log in with the new password.",
+      data: landlordData,
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "FAILED", message: error.message });
+  }
 });
 
 // send an email to the landlord with the password resent link and a token
@@ -289,9 +317,10 @@ const passwordResetToken = asyncHandler(async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
-      return res
-        .status(400)
-        .json({ message: "Please provide your email address.landlord" });
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide your email address",
+      });
     }
 
     if (!emailValidator.validate(email)) {
@@ -303,22 +332,24 @@ const passwordResetToken = asyncHandler(async (req, res) => {
     const landlord = await Landlord.findOne({ email });
     if (!landlord) {
       return res.status(404).json({
+        status: "FAILED",
         message:
           "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
       });
     }
     const token = await landlord.createPasswordResetToken();
+    // console.log token for test
+    console.log(token);
     await landlord.save();
     const data = { landlord: { name: landlord.name }, token };
-
     await sendMail({
       email: landlord.email,
       subject: "Password Reset Link",
       template: "landlord-reset-password-token-mail.ejs",
       data,
     });
-    console.log(token);
     return res.status(200).json({
+      status: "SUCCESS",
       message: `A password reset link has been sent to ${landlord.email}. Please check your email inbox and follow the instructions to reset your password.`,
     });
   } catch (error) {
@@ -351,14 +382,16 @@ const resetPassword = asyncHandler(async (req, res) => {
     const landlord = await Landlord.findOne({
       passwordResetToken: hashedToken,
       passwordResetExpires: { $gt: Date.now() },
-    });
+    }).select("+password");
     if (!landlord) {
       return res.status(400).json({
-        message: "Invalid or expired password reset token. Please try again.",
+        status: "FAILED",
+        message: "Invalid password reset token.",
       });
     }
     if (await landlord.isPasswordMatched(password)) {
       return res.status(400).json({
+        status: "FAILED",
         message:
           "Please choose a new password that is different from the old one.",
       });
@@ -368,6 +401,7 @@ const resetPassword = asyncHandler(async (req, res) => {
     landlord.passwordResetExpires = undefined;
     await landlord.save();
     return res.json({
+      status: "SUCCESS",
       message: "Your password has been successfully reset. Proceed to login.",
     });
   } catch (error) {
@@ -423,6 +457,8 @@ const logout = asyncHandler(async (req, res) => {
   }
 });
 
+// so far so good => any error to be reported asap.
+
 module.exports = {
   registerNewLandlord,
   activateLandlordAccount,
@@ -432,4 +468,5 @@ module.exports = {
   resetPassword,
   refreshLandlordAccesToken,
   logout,
+  me,
 };

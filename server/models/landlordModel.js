@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
+const { type } = require("os");
 
 const landlordSchema = new mongoose.Schema(
   {
@@ -182,14 +183,16 @@ const landlordSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
       unique: true,
-      default: "",
+      trim: true,
+      sparse: true,
     },
 
-    landlordState: {
+    landlordAccountStatus: {
       type: String,
-      enum: ["Deleted", "Active", "Inactive"],
+      enum: ["Active", "Disabled"],
       default: "Active",
     },
+
     termsAndConditionsAccepted: {
       type: Boolean,
       required: true,
@@ -197,6 +200,10 @@ const landlordSchema = new mongoose.Schema(
     termsAndConditionsAcceptedAt: {
       type: Date,
       default: Date.now(),
+    },
+    isAccountVerrified: {
+      type: Boolean,
+      default: false,
     },
     passwordChagedAt: Date,
     passwordResetToken: String,

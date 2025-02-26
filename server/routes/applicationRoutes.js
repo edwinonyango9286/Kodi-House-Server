@@ -6,36 +6,36 @@ const {
   getAllApplications,
   deleteApplication,
 } = require("../controllers/applicationController");
-const { landlordAuthMiddleware, isLandlord } = require("../middlewares/authMiddleware");
+const { landlordAuthMiddleware, isAValidLandlord } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
 router.post(
   "/create-application",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   createApplication
 );
 
 router.put(
   "/update-application",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   updateApplication
 );
 
-router.get("/get-application/:id", landlordAuthMiddleware, isLandlord, getApplication);
+router.get("/get-application/:id", landlordAuthMiddleware, isAValidLandlord, getApplication);
 router.get(
   "/get-all-applications",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   getAllApplications
 );
 
 router.delete(
   "/delete-application/:id",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   deleteApplication
 );
 

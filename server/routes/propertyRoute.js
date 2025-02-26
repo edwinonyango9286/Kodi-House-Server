@@ -1,7 +1,7 @@
 const express = require("express");
 const {
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
 } = require("../middlewares/authMiddleware");
 const {
   addAProperty,
@@ -16,27 +16,27 @@ const router = express.Router();
 router.post(
   "/add_a_property",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   addAProperty
 );
 router.get("/get_a_property_by_id/:propertyId", getApropertyById);
 router.get(
   "/get_all_properties",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   getAllProperties
 );
 
 router.put(
   "/update_a_property/:propertyId",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   updateAproperty
 );
 router.put(
   "/assign_a_property_to_a_tenant/:propertyId",
   landlordAuthMiddleware,
-  isLandlord,
+  isAValidLandlord,
   asignPropertyToAtenant
 );
 
