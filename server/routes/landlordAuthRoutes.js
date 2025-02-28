@@ -24,7 +24,7 @@ router.post("/logout", logout);
 
 // put routes
 router.put("/update_landlord_password", landlordAuthMiddleware, updatePassword);
-router.put("/reset-password/:token", resetPassword);
+router.put("/reset_password/:token", resetPassword);
 router.get("/me", landlordAuthMiddleware, me);
 
 module.exports = router;

@@ -2,6 +2,16 @@ const mongoose = require("mongoose");
 
 const InvoiceSchema = new mongoose.Schema(
   {
+    landlord: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props} is not a valid mongodbId`,
+      },
+    },
     invoiceNumber: {
       type: String,
       required: true,
@@ -23,8 +33,7 @@ const InvoiceSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
-    requrringInvoice: {
+    recurringInvoice: {
       type: String,
       required: true,
       enum: ["Yes", "No"],

@@ -150,26 +150,52 @@ const isAdmin = asyncHandler(async (req, res, next) => {
   const admin = await Admin.findOne({ email });
   if (!admin) {
     return res.status(404).json({
+      status: "FAILED",
       message:
         "We couldn't find an admin account associated with this email address. Please double-check your email address and try again.",
     });
   }
   if (admin.role !== "admin") {
-    return res.status(403).json({ message: "Not authorized." });
+    return res
+      .status(403)
+      .json({ status: "FAILED", message: "Not authorized." });
   }
   next();
 });
+
+// ensures user is a super admin => super admin adds adds other admins
+const isSuperAdmin = asyncHandler(async (req, res, next) => {
+  const { email } = req.admin;
+  const superAdmin = await Admin.findOne({ email });
+  if (!superAdmin) {
+    return res.status(404).json({
+      status: "FAILED",
+      message:
+        "We couldn't find an admin account associated with this email address. Please double-check your email address and try again.",
+    });
+  }
+  if (superAdmin.role !== "superAdmin") {
+    return res
+      .status(403)
+      .json({ status: "FAILED", message: "Not authorised." });
+  }
+  next();
+});
+
 const isTenant = asyncHandler(async (req, res, next) => {
   const { email } = req.tenant;
   const tenant = await Tenant.findOne({ email });
   if (!tenant) {
     return res.status(404).json({
+      status: "FAILED",
       message:
         "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
     });
   }
   if (tenant.role !== "tenant") {
-    return res.status(403).json({ message: "Not authorized." });
+    return res
+      .status(403)
+      .json({ status: "FAILED", message: "Not authorized." });
   }
   next();
 });
@@ -211,4 +237,5 @@ module.exports = {
   adminAuthMiddleware,
   isAValidLandlord,
   isTenant,
+  isSuperAdmin,
 };

@@ -17,7 +17,6 @@ const expressAsyncHandler = require("express-async-handler");
 const registerNewLandlord = asyncHandler(async (req, res) => {
   try {
     const { name, email, password, termsAndConditionsAccepted } = req.body;
-
     // check for required fields
     if (!name || !email || !password || !termsAndConditionsAccepted) {
       return res.status(400).json({
@@ -149,7 +148,6 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
   }
 });
 
-
 const sigInLandlord = asyncHandler(async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -178,7 +176,11 @@ const sigInLandlord = asyncHandler(async (req, res) => {
     if (landlord && landlord.role !== "landlord") {
       return res.status(401).json({ message: "Not authorised." });
     }
-    if (landlord && !(await landlord.isPasswordMatched(password))) {
+    if (
+      landlord &&
+      landlord.role === "landlord" &&
+      !(await landlord.isPasswordMatched(password))
+    ) {
       res.status(403).json({ message: "Wrong email or password." });
     }
     const accessToken = generateAccessToken(landlord._id);
@@ -199,7 +201,7 @@ const sigInLandlord = asyncHandler(async (req, res) => {
 
     return res.status(200).json({
       status: "SUCCESS",
-      message: "Sign in success",
+      message: "Sign in success.",
       landlord: landlordData,
       accessToken: accessToken,
     });
@@ -228,26 +230,26 @@ const me = asyncHandler(async (req, res) => {
 
 // Generates new access token from refresh token for the landlord
 const refreshLandlordAccesToken = asyncHandler(async (req, res) => {
-  const { refreshToken } = req.cookies;
-  if (!refreshToken) {
-    return res.status(400).json({
-      status: "FAILED",
-      // if refresh token is missing from cookies it means the refresh token has expired has been removed from cookies
-      message: "Session Expired. Please log in again",
-    });
-  }
-  const landlord = await Landlord.findOne({ refreshToken });
-  if (!landlord) {
-    return res
-      .status(400)
-      .json({ status: "FAILED", message: "Invalid refresh token." });
-  }
   try {
+    const { refreshToken } = req.cookies;
+    if (!refreshToken) {
+      return res.status(400).json({
+        status: "FAILED",
+        // if refresh token is missing from cookies it means the refresh token has expired has been removed from cookies
+        message: "Session Expired. Please log in to continue.",
+      });
+    }
+    const landlord = await Landlord.findOne({ refreshToken });
+    if (!landlord) {
+      return res
+        .status(400)
+        .json({ status: "FAILED", message: "Invalid refresh token." });
+    }
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
     if (landlord.id !== decoded.id) {
       return res.status(400).json({
         status: "FAILED",
-        message: "Unauthorized access. Please log in again.",
+        message: "Unauthorized access. Please log in to continue.",
       });
     }
     const newAccessToken = generateAccessToken(landlord._id);
@@ -256,7 +258,7 @@ const refreshLandlordAccesToken = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
-      message: "Invalid or expired refresh token. Please log in again.",
+      message: error.message,
     });
   }
 });

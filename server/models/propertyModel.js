@@ -157,12 +157,10 @@ const propertySchema = new mongoose.Schema(
         default: false,
       },
     },
-
     numberOfBedRooms: {
       type: Number,
       default: 0,
     },
-
     numberOfBathRooms: {
       type: Number,
       default: 0,

@@ -78,7 +78,7 @@ const updateAproperty = expressAsyncHandler(async (req, res) => {
         .json({ status: "FAILED", message: "Property not found." });
     }
 
-    return res.status(200).json({ status: "SUCCESS", updatedProperty });
+    return res.status(200).json({ status: "SUCCESS", data: updatedProperty });
   } catch (error) {
     return res.status(500).json({ status: "FAILED", message: error.message });
   }
