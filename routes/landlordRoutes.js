@@ -17,6 +17,5 @@ router.get(
   getALandlordWithAllRelatedData
 );
 
-router.post("/add_tenant", landlordAuthMiddleware, isAValidLandlord, addTenant);
 
 module.exports = router;

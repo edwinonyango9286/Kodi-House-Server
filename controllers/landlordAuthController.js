@@ -198,6 +198,7 @@ const sigInLandlord = asyncHandler(async (req, res) => {
     // remove password from the landlord object
     const landlordData = { ...landlord.toObject() };
     delete landlordData.password;
+    delete landlordData.refreshToken;
 
     return res.status(200).json({
       status: "SUCCESS",

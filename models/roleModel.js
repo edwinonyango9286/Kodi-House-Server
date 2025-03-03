@@ -14,25 +14,17 @@ const roleSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid objectId`,
       },
     },
-
-    users: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
-        default: [],
-        validate: {
-          validator: function (id) {
-            return mongoose.Types.ObjectId.isValid(id);
-          },
-          message: (props) => `${props.value} is not a valid objectId`,
-        },
-      },
-    ],
-
     name: {
       type: String,
       required: true,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

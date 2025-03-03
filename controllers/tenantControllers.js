@@ -14,7 +14,8 @@ const generateRandomPassword = (length = 8) => {
 };
 
 // add a tenant=>a tenant is added by a landlord
-const addTenant = expressAsyncHandler(async (req, res) => {
+
+const addATenant = expressAsyncHandler(async (req, res) => {
   try {
     const { firstName, secondName, email, phoneNumber } = req.body;
     // Validate required fields
@@ -25,7 +26,6 @@ const addTenant = expressAsyncHandler(async (req, res) => {
         message: "Please provide all the required fields.",
       });
     }
-
     // Check for existing tenant
     const existingTenant = await Tenant.findOne({ email });
 
@@ -36,20 +36,22 @@ const addTenant = expressAsyncHandler(async (req, res) => {
         existingTenant.firstName = firstName;
         existingTenant.secondName = secondName;
         existingTenant.phoneNumber = phoneNumber;
-        existingTenant.password = generateRandomPassword(8);
+        const password = generateRandomPassword(8); // Store the generated password
+        existingTenant.password = password; // Set the password
         existingTenant.isDeleted = false; // Reactivate account
-        existingTenant.accountStatus = "Active"; // Set account status to active
+        (existingTenant.deletedAt = null),
+          (existingTenant.accountStatus = "Active"); // Set account status to active
         await existingTenant.save();
 
-        // send email to the reactivated tenant informing them that their account has been reactivated successfully
+        // Send email to the reactivated tenant informing them that their account has been reactivated successfully
         const existingTenantData = {
-          existingTenant: { firstName, email, password },
+          existingTenant: { firstName, email, password }, // Use the stored password
         };
 
         const data = {
-          email: addedTenant.email,
+          email: existingTenant.email, // Corrected to use existingTenant
           subject: "Tenant Sign In Credentials.",
-          template: "tenantSignInCredentials.ejs",
+          template: "reactivated-tenant-sign-in-credentials.ejs",
           data: existingTenantData,
         };
 
@@ -71,23 +73,23 @@ const addTenant = expressAsyncHandler(async (req, res) => {
       }
     }
 
-    
     // If no existing tenant, create a new one
+    const password = generateRandomPassword(8); // Store the generated password for the new tenant
     const addedTenant = await Tenant.create({
       ...req.body,
       landlord: req.landlord._id,
-      password: generateRandomPassword(8),
+      password: password, // Set the password
     });
 
     // Send the sign-in credentials to the tenant
     if (addedTenant) {
       const tenantData = {
-        addedTenant: { firstName, email, password },
+        addedTenant: { firstName, email, password }, // Use the stored password
       };
       const data = {
         email: addedTenant.email,
         subject: "Tenant Sign In Credentials.",
-        template: "tenantSignInCredentials.ejs",
+        template: "new-tenant-sign-in-credentials.ejs",
         data: tenantData,
       };
       await sendMail(data);
@@ -150,7 +152,6 @@ const disableTenantAccount = expressAsyncHandler(async () => {
       },
       { new: true }
     );
-
     if (!disabledTenant) {
       return res
         .status(404)
@@ -165,12 +166,13 @@ const disableTenantAccount = expressAsyncHandler(async () => {
   }
 });
 
-// get all tenants related to a particular landlord=> retrieves only tenants whose account are not deleted
-const getAllTenants = expressAsyncHandler(async () => {
+// get all tenants related to a particular landlord=>gets all tenants whose account are not deleted
+const getAllTenants = expressAsyncHandler(async (req, res) => {
   try {
     const tenants = await Tenant.find({
-      isDeleted: false,
       landlord: req.landlord._id,
+      isDeleted: false,
+      deletedAt: null,
     });
     return res.status(200).json({ status: "SUCCESS", data: tenants });
   } catch (error) {
@@ -194,7 +196,7 @@ const getAllDeletedTenants = expressAsyncHandler(async () => {
   }
 });
 
-const deleteATenant = expressAsyncHandler(async () => {
+const deleteATenant = expressAsyncHandler(async (req, res) => {
   try {
     const { tenantId } = req.params;
     const deletedTenant = await Tenant.findOneAndUpdate(
@@ -227,7 +229,7 @@ const deleteATenant = expressAsyncHandler(async () => {
 });
 
 module.exports = {
-  addTenant,
+  addATenant,
   updateATenant,
   deleteATenant,
   getAllDeletedTenants,

@@ -12,11 +12,10 @@ const addAuser = expressAsyncHandler(async (req, res) => {
       secondName,
       email,
       phoneNumber,
-      roles,
+      role,
       status,
       description,
-      properties,
-      units,
+      property,
     } = req.body;
 
     if (
@@ -24,11 +23,10 @@ const addAuser = expressAsyncHandler(async (req, res) => {
       !secondName ||
       !email ||
       !phoneNumber ||
-      !roles ||
+      !role ||
       !status ||
       !description ||
-      !properties ||
-      !units
+      !property
     ) {
       return res.status(400).json({
         status: "FAILED",
@@ -44,14 +42,13 @@ const addAuser = expressAsyncHandler(async (req, res) => {
           "A user with this email already exist. Please double check your email address or use a different email.",
       });
     }
-    const user = await User.create({ ...req.body, addedBy: _id });
-    if (user) {
-      return res.status(201).json({
-        status: "SUCCESS",
-        message: "User added successfully.",
-        user,
-      });
-    }
+    const user = await User.create({ ...req.body, landlord: _id });
+
+    return res.status(201).json({
+      status: "SUCCESS",
+      message: "User added successfully.",
+      data: user,
+    });
   } catch (error) {
     return res.status(500).json({
       status: "FAILED",
@@ -83,13 +80,15 @@ const getAUserById = expressAsyncHandler(async (req, res) => {
   }
 });
 
-// get all users related to a particular landlord
-const getAllLandlordUsers = expressAsyncHandler(async (req, res) => {
+// get all users related to a particular landlord=>get all the user who are not deleted
+const getAllUsers = expressAsyncHandler(async (req, res) => {
   try {
-    const { _id } = req.landlord;
-    validateMongoDbId(_id);
-    const users = await User.find({ addedBy: _id });
-    return res.status(200).json({ status: "SUCCESS", users });
+    const users = await User.find({
+      landlord: req.landlord._id,
+      isDeleted: false,
+      deletedAt: null,
+    });
+    return res.status(200).json({ status: "SUCCESS", data: users });
   } catch (error) {
     res.status(500).json({ status: "FAILED", message: error.message });
   }
@@ -185,7 +184,7 @@ const softDeleteAUserById = expressAsyncHandler(async (req, res) => {
 module.exports = {
   addAuser,
   getAUserById,
-  getAllLandlordUsers,
+  getAllUsers,
   updateAUserById,
   softDeleteAUserById,
 };

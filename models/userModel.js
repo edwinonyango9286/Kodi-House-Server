@@ -46,19 +46,17 @@ const userSchema = new mongoose.Schema(
     },
 
     // one user can have more than one role
-    roles: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Role",
-        required: true,
-        validate: {
-          validator: function (id) {
-            return mongoose.Types.ObjectId.isValid(id);
-          },
-          message: (props) => `${props.value} is not a valid ObjectId.`,
+    role: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Role",
+      required: true,
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
         },
+        message: (props) => `${props.value} is not a valid ObjectId.`,
       },
-    ],
+    },
 
     status: {
       type: String,
@@ -73,36 +71,40 @@ const userSchema = new mongoose.Schema(
       maxlength: 2000,
       lowercase: true,
     },
-    properties: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: "Property",
-        validate: {
-          validator: function (id) {
-            return mongoose.Types.ObjectId.isValid(id);
-          },
-          message: (props) => `${props.value} is not a valid ObjectId.`,
+    property: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "Property",
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
         },
+        message: (props) => `${props.value} is not a valid ObjectId.`,
       },
-    ],
-    units: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Unit",
-        required: true,
-        validate: {
-          validator: function (id) {
-            return mongoose.Types.ObjectId.isValid(id);
-          },
-          message: (props) => `${props.value} is not a valid ObjectId.`,
-        },
-      },
-    ],
+    },
 
+    units: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Unit",
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid ObjectId.`,
+      },
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
     userState: {
       type: String,
-      enum: ["Active", "Inactive", "Deleted"],
+      enum: ["Active", "Disabled"],
       default: "Active",
     },
   },

@@ -8,19 +8,35 @@ const {
   updateARole,
   getAllRoles,
   getARole,
+  deleteARole,
 } = require("../controllers/roleController");
 
 const router = express.Router();
 
-router.post("/add-role", landlordAuthMiddleware, isAValidLandlord, addARole);
-router.get("/get-a-role/:roleId", landlordAuthMiddleware, isAValidLandlord, getARole);
+router.post("/add_role", landlordAuthMiddleware, isAValidLandlord, addARole);
+router.get(
+  "/get_a_role/:roleId",
+  landlordAuthMiddleware,
+  isAValidLandlord,
+  getARole
+);
 router.put(
   "/update-a-role/:roleId",
   landlordAuthMiddleware,
   isAValidLandlord,
   updateARole
 );
-router.get("/get-all-roles", landlordAuthMiddleware, isAValidLandlord, getAllRoles);
-router.delete("/delete-role");
+router.get(
+  "/get_all_roles",
+  landlordAuthMiddleware,
+  isAValidLandlord,
+  getAllRoles
+);
+router.delete(
+  "/delete_role/:roleId",
+  landlordAuthMiddleware,
+  isAValidLandlord,
+  deleteARole
+);
 
 module.exports = router;

@@ -79,6 +79,7 @@ const tenantSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      select: false,
     },
 
     properties: [

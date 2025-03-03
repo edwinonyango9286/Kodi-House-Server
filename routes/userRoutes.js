@@ -6,10 +6,10 @@ const {
 const {
   addAuser,
   getAUserById,
-  getAllLandlordUsers,
   updateAUserById,
   softDeleteAUserById,
-} = require("../controllers/userControllers");
+} = require("../controllers/userController");
+const { getAllUsers } = require("../controllers/userController");
 
 const router = express.Router();
 
@@ -21,10 +21,10 @@ router.get(
   getAUserById
 );
 router.get(
-  "/get-users",
+  "/get_all_users",
   landlordAuthMiddleware,
   isAValidLandlord,
-  getAllLandlordUsers
+  getAllUsers
 );
 router.put(
   "/update-user/:userId",
