@@ -21,7 +21,7 @@ router.get(
   getARole
 );
 router.put(
-  "/update-a-role/:roleId",
+  "/update_a_role/:roleId",
   landlordAuthMiddleware,
   isAValidLandlord,
   updateARole
