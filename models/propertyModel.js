@@ -57,7 +57,13 @@ const propertySchema = new mongoose.Schema(
     },
     numberOfUnits: {
       type: Number,
-      default: 0,
+      require: true,
+      validate: {
+        validator: (value) => {
+          return value >= 1;
+        },
+        message: "Number of units cannot be a negative value",
+      },
     },
     rentPerUnit: {
       type: Number,
@@ -176,6 +182,14 @@ const propertySchema = new mongoose.Schema(
       type: String,
       enum: ["Occupied", "Vacant"],
       required: true,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: Date.now(),
     },
   },
   {

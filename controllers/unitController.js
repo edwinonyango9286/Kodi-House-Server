@@ -14,40 +14,56 @@ const addANewUnit = expressAsyncHandler(async (req, res) => {
       property,
       category,
       rentPerMonth,
-      unitNumber,
-      tag,
-      description,
-      videos,
+      tags,
+      shortDescription,
       images,
+      unitNumber,
     } = req.body;
 
     if (
       !property ||
       !category ||
       !rentPerMonth ||
-      !unitNumber ||
-      !tag ||
-      !description ||
-      !images
+      !tags ||
+      !shortDescription ||
+      !images ||
+      !unitNumber
     ) {
       return res.status(400).json({
         status: "FAILED",
         message: "Please provide all the required fields.",
       });
     }
-    // check if a unit with the same unit number already exist
-    const unit = await Unit.findOne({ unitNumber });
-    if (unit) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "A unit with the same unit number already exist.",
-      });
+
+    // Check if a unit with the same unit number already exists
+    const existingUnit = await Unit.findOne({ landlord: _id, unitNumber });
+
+    if (existingUnit) {
+      // If the unit exists and isDeleted is true, restore it
+      if (existingUnit.isDeleted) {
+        existingUnit.isDeleted = false;
+        existingUnit.deletedAt = null;
+        await existingUnit.save();
+        return res.status(200).json({
+          status: "SUCCESS",
+          message: "Unit restored successfully.",
+          data: existingUnit,
+        });
+      } else {
+        // If the unit exists and is not deleted, return an error
+        return res.status(400).json({
+          status: "FAILED",
+          message: "A unit with the same unit number already exists.",
+        });
+      }
     }
+
+    // If no existing unit, create a new one
     const newUnit = await Unit.create({ ...req.body, landlord: _id });
     return res.status(201).json({
       status: "SUCCESS",
       message: "Unit added successfully.",
-      newUnit,
+      data: newUnit,
     });
   } catch (error) {
     return res.status(500).json({ status: "FAILED", message: error.message });
@@ -56,6 +72,7 @@ const addANewUnit = expressAsyncHandler(async (req, res) => {
 
 // adding multiple units from an excel sheet
 const uploads = multer({ dest: "uploads/" });
+
 const addMultipleUnitsFromExcelSheet = expressAsyncHandler(async (req, res) => {
   try {
     let uploadedFilePath = req.file.path;
@@ -72,7 +89,7 @@ const addMultipleUnitsFromExcelSheet = expressAsyncHandler(async (req, res) => {
         if (err) {
           console.error("Error deleting the file:", err);
         } else {
-          console.log("File deleted successfully");
+          console.log("File deleted successfully.");
         }
       });
     }
@@ -84,55 +101,113 @@ const addMultipleUnitsFromExcelSheet = expressAsyncHandler(async (req, res) => {
   }
 });
 
+// update a unit => only update a unit that is not deleted
 const updateAUnit = expressAsyncHandler(async (req, res) => {
   const { _id } = req.landlord;
   const { unitId } = req.params;
   validateMongoDbId(_id);
   validateMongoDbId(unitId);
   try {
+    // only update a unit which is not deleted
     const updatedUnit = await Unit.findOneAndUpdate(
-      { _id: unitId, landlord: _id },
-      { new: true }
+      { _id: unitId, landlord: _id, isDeleted: false, deletedAt: null },
+      req.body,
+      { new: true, runValidators: true }
     );
     if (!updatedUnit) {
       return res
         .status(404)
         .json({ status: "FAILED", message: "Unit not found." });
     }
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Unit updated successfully.",
+      data: updatedUnit,
+    });
   } catch (error) {
     return res.status(500).json({ status: "FAILED", message: error.message });
   }
 });
 
-// get all units
+// get all units=> all units that are not deleted
 const getAllUnits = expressAsyncHandler(async (req, res) => {
   try {
-    const { _id } = req.landlord;
-    validateMongoDbId(_id);
-    const units = await Unit.find({ landlord: _id });
-    return res.status(200).json({ status: "SUCCESS", units });
+    const queryObject = { ...req.query };
+    // exclude fileds for paginantion and sorting
+    const excludedFields = ["page", "sort", "limit", "offset", "fields"];
+    excludedFields.forEach((el) => delete queryObject[el]);
+    queryObject.isDeleted = false;
+    queryObject.deletedAt = null;
+
+    let queryStr = JSON.stringify(queryObject);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+
+    let query = Unit.find(JSON.parse(queryStr));
+
+    // sorting
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort("-createdAt");
+    }
+
+    // field limiting
+    if (req.query.fields) {
+      const fields = req.query.fields.split(",").join(" ");
+      query = query.select(fields);
+    } else {
+      query = query.select("-__v");
+    }
+
+    // pagination
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const offset = parseInt(req.query.offset, 10) || 0;
+    query = query.skip(offset).limit(limit);
+
+    const units = await query;
+
+    return res.status(200).json({ status: "SUCCESS", data: units });
   } catch (error) {
     return res.status(500).json({ status: "FAILED", message: error.message });
   }
 });
 
-// delete a unit
+// delete a unit => update
 const deleteAUnit = expressAsyncHandler(async (req, res) => {
   try {
-  } catch (error) {}
+    const { unitId } = req.params;
+    validateMongoDbId(unitId);
+    const deletedUnit = await Unit.findOneAndUpdate(
+      {
+        _id: unitId,
+        landlord: req.landlord._id,
+        isDeleted: false,
+      },
+      { isDeleted: true, deletedAt: Date.now() },
+      { new: true, runValidators: true }
+    );
+
+    if (!deletedUnit) {
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Unit not found." });
+    }
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Unit deleted successfully.",
+      data: deletedUnit,
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "FAILED", message: error.message });
+  }
 });
-
-const searchUnits = expressAsyncHandler(async (req, res) => {
-
-});
-
-
-
 
 module.exports = {
   getAllUnits,
   addANewUnit,
   updateAUnit,
   uploads,
+  deleteAUnit,
   addMultipleUnitsFromExcelSheet,
 };

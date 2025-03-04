@@ -2,6 +2,7 @@ const Property = require("../models/propertyModel");
 const expressAsyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const Tenant = require("../models/tenantModel");
+const _ = require("lodash");
 
 // add a new property
 const addAProperty = expressAsyncHandler(async (req, res) => {
@@ -15,12 +16,8 @@ const addAProperty = expressAsyncHandler(async (req, res) => {
       numberOfUnits,
       rentPerUnit,
       description,
-      videos,
       googleMap,
       images,
-      features,
-      numberOfBedrooms,
-      numberofBathrooms,
       location,
       currentStatus,
     } = req.body;
@@ -43,15 +40,21 @@ const addAProperty = expressAsyncHandler(async (req, res) => {
       });
     }
     // check for existing property by name
-    const existingProperty = await Property.findOne({ name });
+    const existingProperty = await Property.findOne({
+      name: _.startCase(_.toLower(name)),
+    });
     if (existingProperty) {
       return res.status(400).json({
         status: "FAILED",
         message: "A property with a simillar name already exist.",
       });
     }
-    const newProperty = await Property.create({ ...req.body, landlord: _id });
-    return res.status(201).json({ status: "SUCCESS", newProperty });
+    const newProperty = await Property.create({
+      ...req.body,
+      name: _.startCase(_.toLower(name)),
+      landlord: _id,
+    });
+    return res.status(201).json({ status: "SUCCESS", data: newProperty });
   } catch (error) {
     return res.status(500).json({ status: "FAILED", message: error.message });
   }

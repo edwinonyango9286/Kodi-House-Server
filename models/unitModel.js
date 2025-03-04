@@ -36,7 +36,7 @@ const unitSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    tag: {
+    tags: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tag",
       required: true,
@@ -47,7 +47,7 @@ const unitSchema = new mongoose.Schema(
         message: (props) => `${props} is not a valid objectId`,
       },
     },
-    description: {
+    shortDescription: {
       type: String,
       required: true,
       trim: true,
@@ -77,6 +77,14 @@ const unitSchema = new mongoose.Schema(
         },
       },
     ],
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

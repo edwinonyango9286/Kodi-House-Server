@@ -106,7 +106,7 @@ const addATenant = expressAsyncHandler(async (req, res) => {
   }
 });
 
-// general update for a tenant by landlord
+// general update for a tenant by landlord => only update a tenant whose account is not deleted
 const updateATenant = expressAsyncHandler(async (req, res) => {
   try {
     const { tenantId } = req.params;
@@ -115,6 +115,8 @@ const updateATenant = expressAsyncHandler(async (req, res) => {
       {
         _id: tenantId,
         landlord: req.landlord._id,
+        isDeleted: false,
+        deletedAt: null,
       },
       req.body,
       {
@@ -127,7 +129,6 @@ const updateATenant = expressAsyncHandler(async (req, res) => {
         .status(404)
         .json({ status: "FAILED", message: "Tenant not found." });
     }
-
     return res
       .status(200)
       .json({ status: "SUCCESS", message: "Tenant Updated successfully." });
