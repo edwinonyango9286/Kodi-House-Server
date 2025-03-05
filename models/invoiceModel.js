@@ -31,14 +31,21 @@ const InvoiceSchema = new mongoose.Schema(
       required: true,
       enum: ["Cash", "Mpesa", "Airtel Money", "Bank Transfer"],
     },
-    tag: {
+    tags: {
       type: String,
       required: true,
     },
     recurringInvoice: {
       type: String,
       required: true,
-      enum: ["Yes", "No"],
+      enum: [
+        "Yes",
+        "No",
+        "Every 1 Month",
+        "Every 3 Months",
+        "Every 6 Months",
+        "Every 12 Months",
+      ],
     },
     tenantsNote: {
       type: String,
@@ -57,7 +64,7 @@ const InvoiceSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props} is not a valid mongodbId`,
       },
@@ -69,7 +76,7 @@ const InvoiceSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props} is not a valid mongodbId`,
       },
@@ -81,7 +88,7 @@ const InvoiceSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props} is not a valid mongodbId`,
       },
@@ -98,6 +105,7 @@ const InvoiceSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: ["Paid", "Draft", "Overdue", "Partially paid"],
+      default: "Overdue",
     },
     isDeleted: {
       type: Boolean,

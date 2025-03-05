@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+// these users are property management users like watchman,caretaker and agents
 const userSchema = new mongoose.Schema(
   {
     // landlord who adds the user

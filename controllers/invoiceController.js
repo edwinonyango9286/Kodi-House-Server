@@ -1,11 +1,12 @@
 const expressAsyncHandler = require("express-async-handler");
 const Invoice = require("../models/invoiceModel");
+const validateMongoDbId = require("../utils/validateMongoDbId");
 
 // generate a random string for invoice number
 const generateARandomString = (stringLength) => {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
-  for (let i = 0; 1 < stringLength; i++) {
+  for (let i = 0; i < stringLength; i++) {
     const randomIndex = Math.floor(Math.random() * characters.length);
     result += characters[randomIndex];
   }
@@ -23,18 +24,31 @@ const createInvoice = expressAsyncHandler(async (req, res) => {
     const {
       description,
       allowedMethodOfPayment,
-      tag,
-      recurringInvoices,
+      tags,
+      recurringInvoice,
       amount,
       tenant,
       property,
       unit,
-      invoiceDate,
+      dueDate,
     } = req.body;
 
     // check for required fields
-    if(!description || !allowedMethodOfPayment || !tag || !recurringInvoices || !amount || property ){
-      return res.status(400).json({  message:"Please provide all the required fields"})
+    if (
+      !description ||
+      !allowedMethodOfPayment ||
+      !tags ||
+      !recurringInvoice ||
+      !amount ||
+      !property ||
+      !tenant ||
+      !unit ||
+      !dueDate
+    ) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide all the required fields.",
+      });
     }
 
     const createdInvoice = await Invoice.create({
@@ -43,13 +57,11 @@ const createInvoice = expressAsyncHandler(async (req, res) => {
       invoiceNumber: generateInvoiceNumber(),
     });
 
-    return res
-      .status(200)
-      .json({
-        status: "SUCCESS",
-        message: "Invoice created successfully.",
-        data: createdInvoice,
-      });
+    return res.status(201).json({
+      status: "SUCCESS",
+      message: "Invoice created successfully.",
+      data: createdInvoice,
+    });
   } catch (error) {
     return res.status(500).json({ status: "FAILED", message: error.message });
   }
@@ -64,7 +76,7 @@ const getAllInvoices = expressAsyncHandler(async (req, res) => {
   let queryStr = JSON.stringify(queryObject);
   queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-  let query = Invoice.find(JSON.parse(queryStr));
+  let query = Invoice.find({ ...JSON.parse(queryStr), isDeleted: false });
 
   // sorting
   if (req.query.sort) {
@@ -78,7 +90,7 @@ const getAllInvoices = expressAsyncHandler(async (req, res) => {
     const fields = req.query.fields.split(",").join(" ");
     query = query.select(fields);
   } else {
-    query = query.select("__v");
+    query = query.select("-__v");
   }
   // pagination
   const limit = parseInt(req.query.limit, 10) || 10;
@@ -89,4 +101,36 @@ const getAllInvoices = expressAsyncHandler(async (req, res) => {
   return res.status(200).json({ status: "SUCCESS", data: invoices });
 });
 
-module.exports = { getAllInvoices };
+const deleteAnInvoice = expressAsyncHandler(async (req, res) => {
+  try {
+    const { invoiceId } = req.params;
+    validateMongoDbId(invoiceId);
+    const deletedInvoice = await Invoice.findOneAndUpdate(
+      {
+        _id: invoiceId,
+        landlord: req.landlord._id,
+        isDeleted: false,
+      },
+      {
+        isDeleted: true,
+        deletedAt: Date.now(),
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!deletedInvoice) {
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Invoice not found." });
+    }
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Invoice deleted successfully.",
+      data: deletedInvoice,
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "FAILED", message: error.message });
+  }
+});
+
+module.exports = { getAllInvoices, createInvoice, deleteAnInvoice };
