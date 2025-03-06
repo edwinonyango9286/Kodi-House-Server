@@ -7,6 +7,8 @@ const ejs = require("ejs");
 const path = require("path");
 const sendMail = require("../utils/sendMails");
 const Property = require("../models/propertyModel");
+const validatePhoneNumber = require("../utils/validatePhoneNumber");
+const emailValidator = require("email-validator");
 
 // generate a random password for the tenant
 const generateRandomPassword = (length = 8) => {
@@ -15,17 +17,24 @@ const generateRandomPassword = (length = 8) => {
 
 // add a tenant=>a tenant is added by a landlord
 
-const addATenant = expressAsyncHandler(async (req, res) => {
+const addATenant = expressAsyncHandler(async (req, res, next) => {
   try {
     const { firstName, secondName, email, phoneNumber } = req.body;
     // Validate required fields
     if (!firstName || !secondName || !email || !phoneNumber) {
-      logger.error("Please provide all the required fields.");
       return res.status(400).json({
         status: "FAILED",
         message: "Please provide all the required fields.",
       });
     }
+    validatePhoneNumber(phoneNumber);
+    if (!emailValidator.validate(email)) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide a valid email address.",
+      });
+    }
+
     // Check for existing tenant
     const existingTenant = await Tenant.findOne({ email });
 
@@ -47,20 +56,23 @@ const addATenant = expressAsyncHandler(async (req, res) => {
         const existingTenantData = {
           existingTenant: { firstName, email, password }, // Use the stored password
         };
-
         const data = {
-          email: existingTenant.email, // Corrected to use existingTenant
+          email: existingTenant.email,
           subject: "Tenant Sign In Credentials.",
           template: "reactivated-tenant-sign-in-credentials.ejs",
           data: existingTenantData,
         };
-
         await sendMail(data);
+
+        // remove password and refresh token from exisiting tenant
+        const tenantWithoutPassword = { ...existingTenant.toObject() };
+        delete tenantWithoutPassword.password,
+          delete tenantWithoutPassword.refreshToken;
 
         return res.status(200).json({
           status: "SUCCESS",
           message: "Tenant account reactivated successfully.",
-          data: existingTenant,
+          data: tenantWithoutPassword,
         });
       } else {
         // If the account is active, return an error
@@ -95,19 +107,24 @@ const addATenant = expressAsyncHandler(async (req, res) => {
       await sendMail(data);
     }
 
+    // remove password from the tenant and refresh token from the response
+    const tenantData = { ...addedTenant.toObject() };
+    delete tenantData.password;
+    delete tenantData.refreshToken;
+
     return res.status(201).json({
       status: "SUCCESS",
       message: "Tenant added successfully.",
-      data: addedTenant,
+      data: tenantData,
     });
   } catch (error) {
     logger.error("Error adding tenant:", error);
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 // general update for a tenant by landlord => only update a tenant whose account is not deleted
-const updateATenant = expressAsyncHandler(async (req, res) => {
+const updateATenant = expressAsyncHandler(async (req, res, next) => {
   try {
     const { tenantId } = req.params;
     validateMongoDbId(tenantId);
@@ -123,7 +140,6 @@ const updateATenant = expressAsyncHandler(async (req, res) => {
         new: true,
       }
     );
-
     if (!updatedTenant) {
       return res
         .status(404)
@@ -133,12 +149,12 @@ const updateATenant = expressAsyncHandler(async (req, res) => {
       .status(200)
       .json({ status: "SUCCESS", message: "Tenant Updated successfully." });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 // landlord disable Tenant account
-const disableTenantAccount = expressAsyncHandler(async () => {
+const disableTenantAccount = expressAsyncHandler(async (req, res, next) => {
   try {
     const { tenantId } = req.params;
     validateMongoDbId(tenantId);
@@ -163,27 +179,66 @@ const disableTenantAccount = expressAsyncHandler(async () => {
       message: "Tenant account disbaled successfully.",
     });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 // get all tenants related to a particular landlord=>gets all tenants whose account are not deleted
-const getAllTenants = expressAsyncHandler(async (req, res) => {
+const getAllTenants = expressAsyncHandler(async (req, res, next) => {
   try {
-    const tenants = await Tenant.find({
-      landlord: req.landlord._id,
+    const queryObject = { ...req.query };
+    const excludeFields = ["page", "sort", "limit", "offset", "fields"];
+    excludeFields.forEach((element) => delete queryObject[element]);
+
+    let queryString = JSON.stringify(queryObject);
+    queryString = queryString.replace(
+      /\b(gte|gt|lte|lt)\b/g,
+      (match) => `$${match}`
+    );
+
+    // get only tenants who are not deleted and who are related to a particular logged in landlord
+    let query = Tenant.find({
+      ...JSON.parse(queryString),
       isDeleted: false,
       deletedAt: null,
-    });
+      landlord: req.landlord._id,
+    })
+      .populate("landlord")
+      // a tenant can have more than one property assigned to them
+      .populate("properties")
+      //  a tenant can have more that one unit assigned to them
+      .populate("units");
+
+    // sorting
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      query = req.sort(sortBy);
+    } else {
+      query = query.sort("-createdAt");
+    }
+
+    // field limiting
+    if (req.query.fields) {
+      const fields = req.query.fields.split(",").join(" ");
+      query = query.select(fields);
+    } else {
+      query = query.select("-__v");
+    }
+    // pagination
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const offset = parseInt(req.query.offset, 10) || 0;
+    query = query.skip(offset).limit(limit);
+
+    const tenants = await query;
     return res.status(200).json({ status: "SUCCESS", data: tenants });
   } catch (error) {
     logger.error(error.message);
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 // get all tenants whose accounts are deleted  => by landlord
-const getAllDeletedTenants = expressAsyncHandler(async () => {
+const getAllDeletedTenants = expressAsyncHandler(async (req, res, next) => {
   try {
     const deletedTenants = await Tenant.find({
       landlord: req.landlord._id,
@@ -193,7 +248,7 @@ const getAllDeletedTenants = expressAsyncHandler(async () => {
 
     return res.status(200).json({ status: "SUCCESS", data: deletedTenants });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
@@ -225,7 +280,7 @@ const deleteATenant = expressAsyncHandler(async (req, res) => {
       data: deletedTenant,
     });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 

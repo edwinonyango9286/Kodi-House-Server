@@ -62,7 +62,7 @@ const userSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["Active", "Disabled"],
-      default: "Disabled",
+      default: "Active",
     },
     description: {
       type: String,
@@ -72,28 +72,34 @@ const userSchema = new mongoose.Schema(
       maxlength: 2000,
       lowercase: true,
     },
-    property: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      ref: "Property",
-      validate: {
-        validator: function (id) {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props.value} is not a valid ObjectId.`,
-      },
-    },
 
-    units: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Unit",
-      validate: {
-        validator: function (id) {
-          return mongoose.Types.ObjectId.isValid(id);
+    //a single user can be assigned to several properties
+    properties: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Property",
+        validate: {
+          validator: function (id) {
+            return mongoose.Types.ObjectId.isValid(id);
+          },
+          message: (props) => `${props.value} is not a valid ObjectId.`,
         },
-        message: (props) => `${props.value} is not a valid ObjectId.`,
       },
-    },
+    ],
+
+    // a single user can be assigned to several units
+    units: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Unit",
+        validate: {
+          validator: function (id) {
+            return mongoose.Types.ObjectId.isValid(id);
+          },
+          message: (props) => `${props.value} is not a valid ObjectId.`,
+        },
+      },
+    ],
 
     isDeleted: {
       type: Boolean,

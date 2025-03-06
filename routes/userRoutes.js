@@ -13,9 +13,9 @@ const { getAllUsers } = require("../controllers/userController");
 
 const router = express.Router();
 
-router.post("/add-user", landlordAuthMiddleware, isAValidLandlord, addAuser);
+router.post("/add_user", landlordAuthMiddleware, isAValidLandlord, addAuser);
 router.get(
-  "/get-user/:userId",
+  "/get_user/:userId",
   landlordAuthMiddleware,
   isAValidLandlord,
   getAUserById

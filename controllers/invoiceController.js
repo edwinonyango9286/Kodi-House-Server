@@ -71,12 +71,24 @@ const createInvoice = expressAsyncHandler(async (req, res) => {
 const getAllInvoices = expressAsyncHandler(async (req, res) => {
   const queryObject = { ...req.query };
   const excludeFields = ["page", "sort", "limit", "offset", "fields"];
-  excludeFields.forEach((el) => delete queryObject[el]);
+  excludeFields.forEach((element) => delete queryObject[element]);
 
-  let queryStr = JSON.stringify(queryObject);
-  queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+  let queryString = JSON.stringify(queryObject);
+  queryString = queryString.replace(
+    /\b(gte|gt|lte|lt)\b/g,
+    (match) => `$${match}`
+  );
 
-  let query = Invoice.find({ ...JSON.parse(queryStr), isDeleted: false });
+  let query = Invoice.find({
+    ...JSON.parse(queryString),
+    isDeleted: false,
+    deletedAt: null,
+    landlord: req.landlord._id,
+  }) //populate fields
+    .populate("landlord")
+    .populate("tenant")
+    .populate("property")
+    .populate("unit");
 
   // sorting
   if (req.query.sort) {

@@ -14,6 +14,7 @@ const propertySchema = new mongoose.Schema(
       },
     },
 
+    // current occupant should only exist for a single unit property
     currentOccupant: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
@@ -24,14 +25,12 @@ const propertySchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid objectId`,
       },
     },
-
     name: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 2,
-      minlength: 50,
-      lowercase: true,
+      maxlength: 50,
+      minlength: 2,
     },
     category: {
       type: String,
@@ -41,7 +40,6 @@ const propertySchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        default: [],
         validate: {
           validator: function (id) {
             return mongoose.Types.ObjectId.isValid(id);
@@ -52,24 +50,55 @@ const propertySchema = new mongoose.Schema(
     ],
     type: {
       type: String,
-      enum: ["Single Unit", "Multi unit"],
+      enum: ["Single Unit", "Multi Unit"],
       required: true,
     },
+
+    // total number of units
     numberOfUnits: {
       type: Number,
       require: true,
       validate: {
         validator: (value) => {
-          return value >= 1;
+          return value >= 0;
         },
         message: "Number of units cannot be a negative value",
       },
     },
-    rentPerUnit: {
+    occupiedUnits: {
       type: Number,
-      required: true,
+      default: 0,
+      validate: {
+        validator: (value) => {
+          return value >= 0;
+        },
+        message: "Occupied units cannot be a negative value",
+      },
     },
-    description: {
+
+    // different unit can have different prices
+    rent: {
+      start: {
+        type: Number,
+        required: true,
+        validate: {
+          validator: (value) => {
+            return value >= 0;
+          },
+          message: "Rent start cannot be a negative value",
+        },
+      },
+      end: {
+        type: Number,
+        validate: {
+          validator: (value) => {
+            return value >= 0;
+          },
+          message: "Rent end cannot be a nagative value",
+        },
+      },
+    },
+    briefDescription: {
       type: String,
       required: true,
     },
@@ -173,8 +202,8 @@ const propertySchema = new mongoose.Schema(
     },
     location: {
       type: String,
-      maxlength: 2,
-      minlength: 50,
+      maxlength: 50,
+      minlength: 2,
       required: true,
       lowercase: true,
     },
@@ -183,13 +212,14 @@ const propertySchema = new mongoose.Schema(
       enum: ["Occupied", "Vacant"],
       required: true,
     },
+
     isDeleted: {
       type: Boolean,
       default: false,
     },
     deletedAt: {
       type: Date,
-      default: Date.now(),
+      default: null,
     },
   },
   {

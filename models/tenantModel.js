@@ -82,6 +82,7 @@ const tenantSchema = new mongoose.Schema(
       select: false,
     },
 
+    // a tenant can have more than one property assigned to them
     properties: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -95,7 +96,8 @@ const tenantSchema = new mongoose.Schema(
       },
     ],
 
-    unit: [
+    // a tenant can have more than unit assigned to them.
+    units: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Unit",
@@ -107,7 +109,6 @@ const tenantSchema = new mongoose.Schema(
         },
       },
     ],
-
     accountStatus: {
       type: String,
       enum: ["Active", "Disabled"],

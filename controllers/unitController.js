@@ -6,7 +6,7 @@ const xlsx = require("xlsx");
 const fs = require("fs");
 
 // add a new unit
-const addANewUnit = expressAsyncHandler(async (req, res) => {
+const addANewUnit = expressAsyncHandler(async (req, res, next) => {
   try {
     const { _id } = req.landlord;
     validateMongoDbId(_id);
@@ -57,7 +57,6 @@ const addANewUnit = expressAsyncHandler(async (req, res) => {
         });
       }
     }
-
     // If no existing unit, create a new one
     const newUnit = await Unit.create({ ...req.body, landlord: _id });
     return res.status(201).json({
@@ -66,43 +65,45 @@ const addANewUnit = expressAsyncHandler(async (req, res) => {
       data: newUnit,
     });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 // adding multiple units from an excel sheet
 const uploads = multer({ dest: "uploads/" });
 
-const addMultipleUnitsFromExcelSheet = expressAsyncHandler(async (req, res) => {
-  try {
-    let uploadedFilePath = req.file.path;
-    const workBook = xlsx.readFile(uploadedFilePath);
-    const sheetName = workBook.SheetNames[0];
-    const sheet = workBook.Sheets[sheetName];
-    // converts the sheet to json
-    let units = xlsx.utils.sheet_to_json(sheet);
-    // Insert the units into the database
-    units = await Unit.insertMany(units);
-    // delete  uploaded excel file from the uploads directory when upload is successfull.
-    if (units) {
-      fs.unlink(uploadedFilePath, (err) => {
-        if (err) {
-          console.error("Error deleting the file:", err);
-        } else {
-          console.log("File deleted successfully.");
-        }
-      });
+const addMultipleUnitsFromExcelSheet = expressAsyncHandler(
+  async (req, res, next) => {
+    try {
+      let uploadedFilePath = req.file.path;
+      const workBook = xlsx.readFile(uploadedFilePath);
+      const sheetName = workBook.SheetNames[0];
+      const sheet = workBook.Sheets[sheetName];
+      // converts the sheet to json
+      let units = xlsx.utils.sheet_to_json(sheet);
+      // Insert the units into the database
+      units = await Unit.insertMany(units);
+      // delete  uploaded excel file from the uploads directory when upload is successfull.
+      if (units) {
+        fs.unlink(uploadedFilePath, (err) => {
+          if (err) {
+            console.error("Error deleting the file:", err);
+          } else {
+            console.log("File deleted successfully.");
+          }
+        });
+      }
+      return res
+        .status(201)
+        .json({ status: "SUCCESS", message: "Units added successfully." });
+    } catch (error) {
+      next(error);
     }
-    return res
-      .status(201)
-      .json({ status: "SUCCESS", message: "Units added successfully." });
-  } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
   }
-});
+);
 
 // update a unit => only update a unit that is not deleted
-const updateAUnit = expressAsyncHandler(async (req, res) => {
+const updateAUnit = expressAsyncHandler(async (req, res, next) => {
   const { _id } = req.landlord;
   const { unitId } = req.params;
   validateMongoDbId(_id);
@@ -125,12 +126,12 @@ const updateAUnit = expressAsyncHandler(async (req, res) => {
       data: updatedUnit,
     });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 // get all units=> all units that are not deleted
-const getAllUnits = expressAsyncHandler(async (req, res) => {
+const getAllUnits = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
     // exclude fileds for paginantion and sorting
@@ -169,12 +170,12 @@ const getAllUnits = expressAsyncHandler(async (req, res) => {
 
     return res.status(200).json({ status: "SUCCESS", data: units });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 // delete a unit => update
-const deleteAUnit = expressAsyncHandler(async (req, res) => {
+const deleteAUnit = expressAsyncHandler(async (req, res, next) => {
   try {
     const { unitId } = req.params;
     validateMongoDbId(unitId);
@@ -199,7 +200,7 @@ const deleteAUnit = expressAsyncHandler(async (req, res) => {
       data: deletedUnit,
     });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 

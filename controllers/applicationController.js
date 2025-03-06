@@ -1,6 +1,8 @@
 const asyncHandler = require("express-async-handler");
 const Application = require("../models/applicationModel");
 const validateMongoDbId = require("../utils/validateMongoDbId");
+const validatePhoneNumber = require("../utils/validatePhoneNumber");
+const emailValidator = require("email-validator");
 
 // create an application
 const createApplication = asyncHandler(async (req, res) => {
@@ -27,6 +29,13 @@ const createApplication = asyncHandler(async (req, res) => {
     return res.status(400).json({
       status: "FAILED",
       message: "Please provide all the required fields",
+    });
+  }
+  validatePhoneNumber(phoneNumber);
+  if (!emailValidator.validate(email)) {
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Please provide a valid email address.",
     });
   }
   try {

@@ -4,6 +4,14 @@ const validateMongoDbId = require("../utils/validateMongoDbId");
 const Tenant = require("../models/tenantModel");
 const _ = require("lodash");
 
+const toSentenceCase = (str) => {
+  return str
+    .toLowerCase() // Convert the entire string to lower case
+    .split(/(?<=[.!?])\s+/) // Split the string into sentences
+    .map((sentence) => _.capitalize(sentence)) // Capitalize each sentence
+    .join(" "); // Join the sentences back together
+};
+
 // add a new property
 const addAProperty = expressAsyncHandler(async (req, res) => {
   try {
@@ -14,21 +22,20 @@ const addAProperty = expressAsyncHandler(async (req, res) => {
       category,
       type,
       numberOfUnits,
-      rentPerUnit,
-      description,
+      rent,
+      briefDescription,
       googleMap,
       images,
       location,
       currentStatus,
     } = req.body;
-
     if (
       !name ||
       !category ||
       !type ||
       !numberOfUnits ||
-      !rentPerUnit ||
-      !description ||
+      !rent ||
+      !briefDescription ||
       !googleMap ||
       !images ||
       !location ||
@@ -41,36 +48,90 @@ const addAProperty = expressAsyncHandler(async (req, res) => {
     }
     // check for existing property by name
     const existingProperty = await Property.findOne({
+      landlord: _id,
       name: _.startCase(_.toLower(name)),
     });
     if (existingProperty) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "A property with a simillar name already exist.",
-      });
+      // if property exists and has been deleted restore the property
+      if (existingProperty.isDeleted) {
+        (existingProperty.isDeleted = false),
+          (existingProperty.deletedAt = null),
+          await existingProperty.save();
+        return res.status(201).json({
+          status: "SUCCESS",
+          message: "Property created successfully.",
+          data: existingProperty,
+        });
+      } else {
+        return res.status(400).json({
+          status: "FAILED",
+          message: "A property with a simillar name already exist.",
+        });
+      }
     }
     const newProperty = await Property.create({
       ...req.body,
       name: _.startCase(_.toLower(name)),
+      briefDescription: toSentenceCase(briefDescription),
       landlord: _id,
     });
-    return res.status(201).json({ status: "SUCCESS", data: newProperty });
+    return res.status(201).json({
+      status: "SUCCESS",
+      message: "Property created successfully.",
+      data: newProperty,
+    });
   } catch (error) {
     return res.status(500).json({ status: "FAILED", message: error.message });
   }
 });
 
 // update a property
-const updateAproperty = expressAsyncHandler(async (req, res) => {
+const updateAproperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { _id } = req.landlord;
     const { propertyId } = req.params;
     validateMongoDbId(_id);
     validateMongoDbId(propertyId);
+
+    const {
+      name,
+      category,
+      type,
+      numberOfUnits,
+      rent,
+      briefDescription,
+      googleMap,
+      images,
+      location,
+      currentStatus,
+    } = req.body;
+    if (
+      !name ||
+      !category ||
+      !type ||
+      !numberOfUnits ||
+      !rent ||
+      !briefDescription ||
+      !googleMap ||
+      !images ||
+      !location ||
+      !currentStatus
+    ) {
+      return res.status(404).json({
+        status: "FAILED",
+        message: "Please provide all the required fields.",
+      });
+    }
+
     const updatedProperty = await Property.findOneAndUpdate(
       {
         _id: propertyId,
         landlord: _id,
+      },
+      {
+        ...req.body,
+        name: _.startCase(_.toLower(name)),
+        briefDescription: toSentenceCase(briefDescription),
       },
       { new: true }
     );
@@ -83,7 +144,7 @@ const updateAproperty = expressAsyncHandler(async (req, res) => {
 
     return res.status(200).json({ status: "SUCCESS", data: updatedProperty });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
