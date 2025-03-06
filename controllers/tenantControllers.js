@@ -3,16 +3,46 @@ const Tenant = require("../models/tenantModel");
 const logger = require("../utils/logger");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const crypto = require("crypto");
-const ejs = require("ejs");
-const path = require("path");
 const sendMail = require("../utils/sendMails");
-const Property = require("../models/propertyModel");
 const validatePhoneNumber = require("../utils/validatePhoneNumber");
 const emailValidator = require("email-validator");
+const _ = require("lodash");
+const validatePassword = require("../utils/validatePassword");
 
 // generate a random password for the tenant
 const generateRandomPassword = (length = 8) => {
-  return crypto.randomBytes(length).toString("hex").slice(0, length);
+  if (length < 8) {
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Password length must be at least 8 characters.",
+    });
+  }
+
+  const lowerCaseChars = "abcdefghijklmnopqrstuvwxyz";
+  const upperCaseChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const digits = "0123456789";
+  const specialChars = "@$!%*?&";
+
+  // Ensure the password contains at least one character from each category
+  const passwordArray = [
+    lowerCaseChars[Math.floor(Math.random() * lowerCaseChars.length)],
+    upperCaseChars[Math.floor(Math.random() * upperCaseChars.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    specialChars[Math.floor(Math.random() * specialChars.length)],
+  ];
+
+  // Fill the rest of the password length with random characters from all categories
+  const allChars = lowerCaseChars + upperCaseChars + digits + specialChars;
+  for (let i = passwordArray.length; i < length; i++) {
+    passwordArray.push(allChars[Math.floor(Math.random() * allChars.length)]);
+  }
+
+  // Shuffle the password array to ensure randomness
+  const shuffledPassword = passwordArray
+    .sort(() => Math.random() - 0.5)
+    .join("");
+
+  return shuffledPassword;
 };
 
 // add a tenant=>a tenant is added by a landlord
@@ -42,11 +72,11 @@ const addATenant = expressAsyncHandler(async (req, res, next) => {
     if (existingTenant) {
       if (existingTenant.isDeleted) {
         // Reactivate the existing tenant account
-        existingTenant.firstName = firstName;
-        existingTenant.secondName = secondName;
+        existingTenant.firstName = _.startCase(_.toLower(firstName));
+        existingTenant.secondName = _.startCase(_.toLower(secondName));
         existingTenant.phoneNumber = phoneNumber;
-        const password = generateRandomPassword(8); // Store the generated password
-        existingTenant.password = password; // Set the password
+        const password = generateRandomPassword(8);
+        existingTenant.password = password; //validate the password
         existingTenant.isDeleted = false; // Reactivate account
         (existingTenant.deletedAt = null),
           (existingTenant.accountStatus = "Active"); // Set account status to active
@@ -91,6 +121,9 @@ const addATenant = expressAsyncHandler(async (req, res, next) => {
       ...req.body,
       landlord: req.landlord._id,
       password: password, // Set the password
+      // chanhe the first letter of the names to uppercase
+      firstName: _.startCase(_.toLower(firstName)),
+      secondName: _.startCase(_.toLower(secondName)),
     });
 
     // Send the sign-in credentials to the tenant
@@ -135,9 +168,15 @@ const updateATenant = expressAsyncHandler(async (req, res, next) => {
         isDeleted: false,
         deletedAt: null,
       },
-      req.body,
+      {
+        ...req.body,
+        // change the first letters of the names to uppercase
+        firstName: _.startCase(_.toLower(firstName)),
+        secondName: _.startCase(_.toLower(secondName)),
+      },
       {
         new: true,
+        runValidators: true,
       }
     );
     if (!updatedTenant) {

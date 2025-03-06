@@ -18,9 +18,10 @@ const propertySchema = new mongoose.Schema(
     currentOccupant: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
+      default: null,
       validate: {
         validator: (id) => {
-          return mongoose.Types.ObjectId.isValid(id);
+          return id === null || mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props.value} is not a valid objectId`,
       },
@@ -90,6 +91,7 @@ const propertySchema = new mongoose.Schema(
       },
       end: {
         type: Number,
+        default: 0,
         validate: {
           validator: (value) => {
             return value >= 0;
@@ -202,17 +204,15 @@ const propertySchema = new mongoose.Schema(
     },
     location: {
       type: String,
-      maxlength: 50,
+      maxlength: 32,
       minlength: 2,
       required: true,
-      lowercase: true,
     },
     currentStatus: {
       type: String,
       enum: ["Occupied", "Vacant"],
       required: true,
     },
-
     isDeleted: {
       type: Boolean,
       default: false,
