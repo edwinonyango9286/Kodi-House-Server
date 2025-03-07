@@ -14,7 +14,10 @@ const addARole = expressAsyncHandler(async (req, res) => {
         message: "Please provide all the required fields.",
       });
     }
-    let role = await Role.findOne({ landlord: _id, name: _.capitalize(name) });
+    let role = await Role.findOne({
+      landlord: _id,
+      name: _.startCase(_.toLower(name)),
+    });
     // if the role already exist and isDeleted is true then update the role
     if (role) {
       if (role.isDeleted) {
@@ -33,7 +36,7 @@ const addARole = expressAsyncHandler(async (req, res) => {
 
     const createdRole = await Role.create({
       ...req.body,
-      name: _.capitalize(name),
+      name: _.startCase(_.toLower(name)),
       landlord: _id,
     });
     if (createdRole) {
@@ -91,7 +94,7 @@ const updateARole = expressAsyncHandler(async (req, res) => {
     }
     const updatedRole = await Role.findOneAndUpdate(
       { _id: roleId, landlord: _id },
-      { ...req.body, name: _.capitalize(name) },
+      { ...req.body, name: _.startCase(_.toLower(name)) },
       {
         new: true,
         runValidators: true,

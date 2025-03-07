@@ -4,140 +4,156 @@ const validatePassword = require("../utils/validatePassword");
 const Tenant = require("../models/tenantModel");
 const jwt = require("jsonwebtoken");
 const sendMail = require("../utils/sendMails");
-const ejs = require("ejs");
-const path = require("path");
 const { generateAccessToken } = require("../config/accessToken");
 const logger = require("../utils/logger");
+const validatePhoneNumber = require("../utils/validatePhoneNumber");
+const _ = require("lodash");
 
-// Tenants should not register on their own=>landlord adds a tenant
-// const registerNewTenant = asyncHandler(async (req, res) => {
-//   try {
-//     const { name, email, password } = req.body;
-//     if (!name || !email || !password) {
-//       logger.error("Some fileds are not provided.");
-//       return res
-//         .status(400)
-//         .json({ message: "Please provide all the required fields." });
-//     }
-//     if (!emailValidator.validate(email)) {
-//       return res
-//         .status(400)
-//         .json({ message: "Please provide a valid email address." });
-//     }
-//     validatePassword(password);
+// generate a random password for the tenant
+const generateRandomPassword = (length = 8) => {
+  if (length < 8) {
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Password length must be at least 8 characters.",
+    });
+  }
 
-//     //check is the tenant already exist in the database using tenant email
-//     const tenant = await Tenant.findOne({ email });
-//     if (tenant) {
-//       res.status(409).json({
-//         message:
-//           "An account with this email address already exists. Please use a different email address or log in to your existing account.",
-//       });
-//     }
+  const lowerCaseChars = "abcdefghijklmnopqrstuvwxyz";
+  const upperCaseChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const digits = "0123456789";
+  const specialChars = "@$!%*?&";
 
-//     const newTenant = {
-//       name,
-//       email,
-//       password,
-//     };
+  // Ensure the password contains at least one character from each category
+  const passwordArray = [
+    lowerCaseChars[Math.floor(Math.random() * lowerCaseChars.length)],
+    upperCaseChars[Math.floor(Math.random() * upperCaseChars.length)],
+    digits[Math.floor(Math.random() * digits.length)],
+    specialChars[Math.floor(Math.random() * specialChars.length)],
+  ];
 
-//     const activationToken = createActivationToken(newTenant);
-//     const activationCode = activationToken.activationCode;
-//     const data = { newTenant: { name: newTenant?.name }, activationCode };
+  // Fill the rest of the password length with random characters from all categories
+  const allChars = lowerCaseChars + upperCaseChars + digits + specialChars;
+  for (let i = passwordArray.length; i < length; i++) {
+    passwordArray.push(allChars[Math.floor(Math.random() * allChars.length)]);
+  }
 
-//     await sendMail({
-//       email: newTenant?.email,
-//       subject: "Account Activation",
-//       template: "tenant-activation-mail.ejs",
-//       data,
-//     });
-//     return res.status(200).json({
-//       success: true,
-//       message: `An account activation code has been sent to ${newTenant?.email}. Please check it.`,
-//       activationToken: activationToken?.token,
-//     });
-//   } catch (error) {
-//     return res.status(500).json({
-//       status: "FAILED",
-//       message: error.message,
-//     });
-//   }
-// });
+  // Shuffle the password array to ensure randomness
+  const shuffledPassword = passwordArray
+    .sort(() => Math.random() - 0.5)
+    .join("");
 
-//create tenant activation token
-// const createActivationToken = (tenant) => {
-//   try {
-//     const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
-//     const token = jwt.sign(
-//       {
-//         tenant,
-//         activationCode,
-//       },
-//       process.env.ACTIVATION_SECRET,
-//       {
-//         expiresIn: "5min",
-//       }
-//     );
-//     return { token, activationCode };
-//   } catch (error) {
-//     return res.status(500).json({
-//       status: "FAILED",
-//       message: error.message,
-//     });
-//   }
-// };
+  return shuffledPassword;
+};
 
-// const activateTenantAccount = asyncHandler(async (req, res) => {
-//   try {
-//     const { activationToken, activationCode } = req.body;
-//     if (!activationToken || !activationCode) {
-//       return res.status(400).json({
-//         message: "Please provide all the required fields.",
-//       });
-//     }
+// add a tenant=>a tenant is added by a landlord
+const addATenant = asyncHandler(async (req, res, next) => {
+  try {
+    const { firstName, secondName, email, phoneNumber } = req.body;
+    // Validate required fields
+    if (!firstName || !secondName || !email || !phoneNumber) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide all the required fields.",
+      });
+    }
+    validatePhoneNumber(phoneNumber);
+    if (!emailValidator.validate(email)) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide a valid email address.",
+      });
+    }
 
-//     let newTenant;
-//     try {
-//       newTenant = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
-//     } catch (err) {
-//       if (err.name === "TokenExpiredError") {
-//         return res
-//           .status(400)
-//           .json({ message: "Activation token has expired." });
-//       }
-//       return res.status(400).json({ message: "Invalid activation token." });
-//     }
+    // Check for existing tenant
+    const existingTenant = await Tenant.findOne({ email });
 
-//     if (newTenant.activationCode !== activationCode) {
-//       return res.status(400).json({ message: "Invalid activation code." });
-//     }
-//     const { name, email, password } = newTenant.tenant;
-//     const existingTenant = await Tenant.findOne({ email });
+    // If a tenant exists and the account is marked as deleted
+    if (existingTenant) {
+      if (existingTenant.isDeleted) {
+        // Reactivate the existing tenant account
+        existingTenant.firstName = _.startCase(_.toLower(firstName));
+        existingTenant.secondName = _.startCase(_.toLower(secondName));
+        existingTenant.phoneNumber = phoneNumber;
+        const password = generateRandomPassword(8);
+        existingTenant.password = password; //validate the password
+        existingTenant.isDeleted = false; // Reactivate account
+        (existingTenant.deletedAt = null),
+          (existingTenant.accountStatus = "Active"); // Set account status to active
+        await existingTenant.save();
 
-//     if (existingTenant) {
-//       return res.status(409).json({
-//         message:
-//           "An account with this email address already exists. Please use a different email address or log in to your existing account.",
-//       });
-//     }
-//     const tenant = await Tenant.create({
-//       name,
-//       email,
-//       password,
-//       role: "tenant",
-//     });
-//     return res.status(201).json({
-//       success: true,
-//       message:
-//         "Your account has been successfully activated. Please proceed to log in.",
-//     });
-//   } catch (error) {
-//     return res.status(500).json({
-//       status: "FAILED",
-//       message: error.message,
-//     });
-//   }
-// });
+        // Send email to the reactivated tenant informing them that their account has been reactivated successfully
+        const existingTenantData = {
+          existingTenant: { firstName, email, password }, // Use the stored password
+        };
+        const data = {
+          email: existingTenant.email,
+          subject: "Tenant Sign In Credentials.",
+          template: "reactivated-tenant-sign-in-credentials.ejs",
+          data: existingTenantData,
+        };
+        await sendMail(data);
+
+        // remove password and refresh token from exisiting tenant
+        const tenantWithoutPassword = { ...existingTenant.toObject() };
+        delete tenantWithoutPassword.password,
+          delete tenantWithoutPassword.refreshToken;
+
+        return res.status(200).json({
+          status: "SUCCESS",
+          message: "Tenant account reactivated successfully.",
+          data: tenantWithoutPassword,
+        });
+      } else {
+        // If the account is active, return an error
+        logger.error("Email already exists.");
+        return res.status(400).json({
+          status: "FAILED",
+          message:
+            "An account with this email address already exists. Please use a different email address or log in to your existing account.",
+        });
+      }
+    }
+
+    // If no existing tenant, create a new one
+    const password = generateRandomPassword(8); // Store the generated password for the new tenant
+    const addedTenant = await Tenant.create({
+      ...req.body,
+      landlord: req.landlord._id,
+      password: password, // Set the password
+      // chanhe the first letter of the names to uppercase
+      firstName: _.startCase(_.toLower(firstName)),
+      secondName: _.startCase(_.toLower(secondName)),
+    });
+
+    // Send the sign-in credentials to the tenant
+    if (addedTenant) {
+      const tenantData = {
+        addedTenant: { firstName, email, password }, // Use the stored password
+      };
+      const data = {
+        email: addedTenant.email,
+        subject: "Tenant Sign In Credentials.",
+        template: "new-tenant-sign-in-credentials.ejs",
+        data: tenantData,
+      };
+      await sendMail(data);
+    }
+
+    // remove password from the tenant and refresh token from the response
+    const tenantData = { ...addedTenant.toObject() };
+    delete tenantData.password;
+    delete tenantData.refreshToken;
+
+    return res.status(201).json({
+      status: "SUCCESS",
+      message: "Tenant added successfully.",
+      data: tenantData,
+    });
+  } catch (error) {
+    logger.error("Error adding tenant:", error);
+    next(error);
+  }
+});
 
 const SignInTenant = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -347,7 +363,7 @@ const logout = asyncHandler(async (req, res) => {
     await Tenant.findOneAndUpdate(
       { refreshToken },
       {
-        refreshToken: "",
+        refreshToken: null,
       }
     );
     res.clearCookie("refreshToken", {
@@ -367,10 +383,42 @@ const logout = asyncHandler(async (req, res) => {
   }
 });
 
+const deleteATenant = asyncHandler(async (req, res) => {
+  try {
+    const { tenantId } = req.params;
+    const deletedTenant = await Tenant.findOneAndUpdate(
+      { landlord: req.landlord._id, _id: tenantId },
+      // update three fields => isDeleted set to true, deletedAt, accountStatus is set to disabled.
+      {
+        isDeleted: true,
+        deletedAt: Date.now(),
+        accountStatus: "Disabled",
+      },
+      {
+        new: true,
+      }
+    );
+
+    if (!deletedTenant) {
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Tenant not found." });
+    }
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Tenant Account deleted successfully.",
+      data: deletedTenant,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = {
-  // registerNewTenant,
-  // activateTenantAccount,
+  addATenant,
   SignInTenant,
+  deleteATenant,
   updatePassword,
   refreshTenantAccessToken,
   passwordResetToken,

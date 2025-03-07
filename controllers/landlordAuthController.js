@@ -440,7 +440,7 @@ const logout = asyncHandler(async (req, res) => {
     await Landlord.findOneAndUpdate(
       { refreshToken },
       {
-        refreshToken: "",
+        refreshToken: null,
       }
     );
     res.clearCookie("refreshToken", {

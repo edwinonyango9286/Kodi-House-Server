@@ -55,26 +55,22 @@ router.patch(
   isAValidLandlord,
   asignPropertyToAtenant
 );
-
 router.patch(
   "/delete_a_property/:propertyId",
   landlordAuthMiddleware,
   isAValidLandlord,
   deleteAProperty
 );
-
 router.patch(
   "/assign_property_to_a_tenant/:propertyId",
   landlordAuthMiddleware,
   isAValidLandlord,
   asignPropertyToAtenant
 );
-
 router.patch(
   "/vacate_tenant_from_a_property/:propertyId",
   landlordAuthMiddleware,
   isAValidLandlord,
   vacateATenantFromAProperty
 );
-
 module.exports = router;
