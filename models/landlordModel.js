@@ -83,7 +83,7 @@ const landlordSchema = new mongoose.Schema(
         default: [],
         ref: "User",
         validate: {
-          validator: function (id) {
+          validator: (id) => {
             return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid ObjectId.`,
@@ -97,7 +97,7 @@ const landlordSchema = new mongoose.Schema(
         default: [],
         ref: "Property",
         validate: {
-          validator: function (id) {
+          validator: (id) => {
             return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid ObjectId.`,
@@ -111,7 +111,7 @@ const landlordSchema = new mongoose.Schema(
         default: [],
         ref: "Unit",
         validate: {
-          validator: function (id) {
+          validator: (id) => {
             return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid ObjectId.`,
@@ -125,7 +125,7 @@ const landlordSchema = new mongoose.Schema(
         default: [],
         ref: "Tenant",
         validate: {
-          validator: function (id) {
+          validator: (id) => {
             return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid ObjectId.`,
@@ -138,7 +138,7 @@ const landlordSchema = new mongoose.Schema(
         ref: "Applications",
         default: [],
         validate: {
-          validator: function (id) {
+          validator: (id) => {
             return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid ObjectId.`,
@@ -152,7 +152,7 @@ const landlordSchema = new mongoose.Schema(
         ref: "Invoice",
         default: [],
         validate: {
-          validator: function (id) {
+          validator: (id) => {
             return mongoose.Types.ObjectId.isValid(id);
           },
           message: (props) => `${props.value} is not a valid ObjectId.`,
@@ -232,7 +232,6 @@ landlordSchema.methods.createPasswordResetToken = async function () {
     .createHash("sha256")
     .update(resetToken)
     .digest("hex");
-
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
   return resetToken;
 };

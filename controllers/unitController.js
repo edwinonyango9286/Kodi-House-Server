@@ -46,7 +46,7 @@ const addANewUnit = expressAsyncHandler(async (req, res, next) => {
         await existingUnit.save();
         return res.status(200).json({
           status: "SUCCESS",
-          message: "Unit restored successfully.",
+          message: "Unit created successfully.",
           data: existingUnit,
         });
       } else {

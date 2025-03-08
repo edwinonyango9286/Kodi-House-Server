@@ -4,7 +4,7 @@ dotenv.config();
 const fs = require("fs");
 const path = require("path");
 const rateLimit = require("express-rate-limit");
-const { createProxyMiddleware } = require("http-proxy-middleware");
+// const { createProxyMiddleware } = require("http-proxy-middleware");
 
 // checks if excel uploads directory exist if not creates one => this is done when the server starts
 const uploadsDir = path.join(__dirname, "excelUploads");
@@ -21,7 +21,6 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
-
 
 // Express proxy will be necessary if we need to migrate to microservice
 // Actually is not needed for a monolithic architecture
