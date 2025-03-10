@@ -21,7 +21,7 @@ const adminAuthRouter = require("./routes/adminAuthRoutes");
 const invoiceRouter = require("./routes/invoiceRoutes");
 const userRouter = require("./routes/userRoutes");
 const unitRouter = require("./routes/unitRouter");
-const { createProxyMiddleware } = require("http-proxy-middleware");
+const propertyCategoryRouter = require("./routes/propertyCategoryRoutes");
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -75,6 +75,6 @@ app.use("/api/v1/property", propertyRouter);
 app.use("/api/v1/invoice", invoiceRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/unit", unitRouter);
-
+app.use("/api/v1/propertyCategory", propertyCategoryRouter);
 
 module.exports = app;

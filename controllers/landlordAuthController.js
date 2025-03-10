@@ -9,7 +9,6 @@ const { generateRefreshToken } = require("../config/refreshToken");
 const crypto = require("crypto");
 const Landlord = require("../models/landlordModel");
 const logger = require("../utils/logger");
-const expressAsyncHandler = require("express-async-handler");
 
 // landlord should not deleted their own account=> this function should not be provided in version 1 of the application
 
@@ -145,6 +144,36 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
       status: "FAILED",
       message: error.message,
     });
+  }
+});
+
+// It's the work of the admin to verify a particular landlord though the landlord is not related to the admin
+// for a landlord to start using his/her account the landlord should be verified
+const verifyLandlordAccount = asyncHandler(async (req, res) => {
+  try {
+    const { landlordId } = req.params;
+    validateMongoDbId(landlordId);
+    const verifiedLandlord = await Landlord.findOneAndUpdate(
+      {
+        _id: landlordId,
+      },
+      {
+        isAccountVerrified: true,
+      }
+    );
+    if (!verifiedLandlord) {
+      return res
+        .status(404)
+        .json({ status: "Failed", message: "Landlord not found." });
+    }
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Landlord account activated successfully.",
+      data: verifiedLandlord,
+    });
+  } catch (error) {
+    logger.error({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 });
 
@@ -472,4 +501,5 @@ module.exports = {
   refreshLandlordAccesToken,
   logout,
   me,
+  verifyLandlordAccount,
 };

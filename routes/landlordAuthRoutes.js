@@ -9,14 +9,25 @@ const {
   logout,
   refreshLandlordAccesToken,
   me,
+  verifyLandlordAccount,
 } = require("../controllers/landlordAuthController");
-const { landlordAuthMiddleware } = require("../middlewares/authMiddleware");
+const {
+  landlordAuthMiddleware,
+  adminAuthMiddleware,
+  isAdmin,
+} = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
 // post routes
 router.post("/register_new_landlord", registerNewLandlord);
 router.post("/activate_landlord_account", activateLandlordAccount);
+router.put(
+  "/verify_landlord_account/:landlordId",
+  adminAuthMiddleware,
+  isAdmin,
+  verifyLandlordAccount
+);
 router.post("/sign_in_landlord", sigInLandlord);
 router.post("/refresh_access_token", refreshLandlordAccesToken);
 router.post("/password_reset_token", passwordResetToken);

@@ -12,7 +12,6 @@ const landlordSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
-
     firstName: {
       type: String,
       trim: true,

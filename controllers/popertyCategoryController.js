@@ -2,7 +2,7 @@ const expressAsyncHandler = require("express-async-handler");
 const PropertyCategory = require("../models/propertyCategoryModel");
 const _ = require("lodash");
 
-const addPropertyCategory = expressAsyncHandler(async (req, res, next) => {
+const addAPropertyCategory = expressAsyncHandler(async (req, res, next) => {
   try {
     const { name } = req.body;
     if (!name) {
@@ -32,7 +32,6 @@ const addPropertyCategory = expressAsyncHandler(async (req, res, next) => {
         });
       }
     }
-
     // if property category does not exist create one
     const createdPropertyCategory = await PropertyCategory.create({
       landlord: req.landlord._id,
@@ -48,3 +47,5 @@ const addPropertyCategory = expressAsyncHandler(async (req, res, next) => {
     next(error);
   }
 });
+
+module.exports = { addAPropertyCategory };
