@@ -8,7 +8,7 @@ const unitCategorySchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: (id) => {
-          return mongoose.Types.ObjectId(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props.value} is not a valid ObjectId.`,
       },

@@ -34,9 +34,17 @@ const propertySchema = new mongoose.Schema(
       minlength: 2,
     },
     category: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PropertyCategory",
       required: true,
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
     },
+
     users: [
       {
         type: mongoose.Schema.Types.ObjectId,

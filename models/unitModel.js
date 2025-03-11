@@ -25,8 +25,15 @@ const unitSchema = new mongoose.Schema(
       },
     },
     category: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "UnitCategory",
       required: true,
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props} is not a valid objectId`,
+      },
     },
     rentPerMonth: {
       type: Number,

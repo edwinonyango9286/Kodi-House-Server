@@ -1,28 +1,27 @@
 const express = require("express");
 const {
-  addAPropertyCategory,
-  getAllPropertyCategories,
-} = require("../controllers/propertyCategoryController");
-
-const {
   landlordAuthMiddleware,
   isAValidLandlord,
 } = require("../middlewares/authMiddleware");
+const {
+  addAUnitCategory,
+  getAllUnitCategories,
+} = require("../controllers/unitCategoryController");
 
 const router = express.Router();
 
 router.post(
-  "/add_a_property_category",
+  "/add_a_unit_category",
   landlordAuthMiddleware,
   isAValidLandlord,
-  addAPropertyCategory
+  addAUnitCategory
 );
 
 router.get(
-  "/get_all_property_categories",
+  "/get_all_unit_categories",
   landlordAuthMiddleware,
   isAValidLandlord,
-  getAllPropertyCategories
+  getAllUnitCategories
 );
 
 module.exports = router;

@@ -48,4 +48,18 @@ const addAPropertyCategory = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-module.exports = { addAPropertyCategory };
+const getAllPropertyCategories = expressAsyncHandler(async (req, res, next) => {
+  try {
+    const propertyCategories = await PropertyCategory.find({
+      landlord: req.landlord._id,
+      isDeleted: false,
+    });
+    return res
+      .status(200)
+      .json({ status: "SUCCESS", data: propertyCategories });
+  } catch (error) {
+    next(error);
+  }
+});
+
+module.exports = { addAPropertyCategory, getAllPropertyCategories };
