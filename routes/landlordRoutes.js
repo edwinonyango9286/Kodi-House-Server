@@ -3,19 +3,8 @@ const {
   landlordAuthMiddleware,
   isAValidLandlord,
 } = require("../middlewares/authMiddleware");
-const {
-  getALandlordWithAllRelatedData,
-} = require("../controllers/landlordController");
-const { addTenant } = require("../controllers/tenantControllers");
-
+const { me } = require("../controllers/landlordController");
 const router = express.Router();
-
-router.get(
-  "/get-landlord-with-all-related-data",
-  landlordAuthMiddleware,
-  isAValidLandlord,
-  getALandlordWithAllRelatedData
-);
-
+router.get("/me", landlordAuthMiddleware, isAValidLandlord, me);
 
 module.exports = router;

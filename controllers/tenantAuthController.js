@@ -8,6 +8,7 @@ const { generateAccessToken } = require("../config/accessToken");
 const logger = require("../utils/logger");
 const validatePhoneNumber = require("../utils/validatePhoneNumber");
 const _ = require("lodash");
+const { generateRefreshToken } = require("../config/refreshToken");
 
 // generate a random password for the tenant
 const generateRandomPassword = (length = 8) => {
@@ -63,10 +64,8 @@ const addATenant = asyncHandler(async (req, res, next) => {
         message: "Please provide a valid email address.",
       });
     }
-
     // Check for existing tenant
     const existingTenant = await Tenant.findOne({ email });
-
     // If a tenant exists and the account is marked as deleted
     if (existingTenant) {
       if (existingTenant.isDeleted) {
@@ -80,7 +79,6 @@ const addATenant = asyncHandler(async (req, res, next) => {
         (existingTenant.deletedAt = null),
           (existingTenant.accountStatus = "Active"); // Set account status to active
         await existingTenant.save();
-
         // Send email to the reactivated tenant informing them that their account has been reactivated successfully
         const existingTenantData = {
           existingTenant: { firstName, email, password }, // Use the stored password
@@ -97,10 +95,9 @@ const addATenant = asyncHandler(async (req, res, next) => {
         const tenantWithoutPassword = { ...existingTenant.toObject() };
         delete tenantWithoutPassword.password,
           delete tenantWithoutPassword.refreshToken;
-
         return res.status(200).json({
           status: "SUCCESS",
-          message: "Tenant account reactivated successfully.",
+          message: "Tenant added successfully.",
           data: tenantWithoutPassword,
         });
       } else {
@@ -155,156 +152,158 @@ const addATenant = asyncHandler(async (req, res, next) => {
   }
 });
 
-const SignInTenant = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    return res
-      .status(400)
-      .json({ message: "Please provide all the required fields." });
-  }
-  if (!emailValidator.validate(email)) {
-    return res
-      .status(400)
-      .json({ message: "Please provide a valid email address." });
-  }
-  validatePassword(password);
-  const tenant = await Tenant.findOne({ email });
-  if (!tenant) {
-    return res.status(403).json({
-      message:
-        "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
+const SignInTenant = asyncHandler(async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide all the required fields.",
+      });
+    }
+    if (!emailValidator.validate(email)) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide a valid email address.",
+      });
+    }
+    validatePassword(password);
+    const tenant = await Tenant.findOne({ email }).select("+password");
+    if (!tenant) {
+      return res.status(403).json({
+        status: "FAILED",
+        message:
+          "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
+      });
+    }
+    // check if the user is a tenant
+    if (tenant && tenant.role !== "tenant") {
+      return res
+        .status(401)
+        .json({ status: "FAILED", message: "Not authorised." });
+    }
+    if (tenant && !(await tenant.isPasswordMatched(password))) {
+      return res
+        .status(403)
+        .json({ status: "FAILED", message: "Wrong email or password." });
+    }
+    const accessToken = generateAccessToken(tenant._id);
+    const refreshToken = generateRefreshToken(tenant._id);
+    tenant.refreshToken = refreshToken;
+    await tenant.save();
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     });
+    // remove password and refresh token from tenant
+    const tenantData = { ...tenant.toObject() };
+    delete tenantData.password;
+    delete tenantData.refreshToken;
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "You've successfully signed in.",
+      data: tenantData,
+      accessToken: accessToken,
+    });
+  } catch (error) {
+    // pass the error to the error handler middleware
+    next(error);
   }
-  if (tenant && !(await tenant.isPasswordMatched(password))) {
-    res.status(403).json({ message: "Wrong email or password." });
-  }
-
-  const accessToken = generateAccessToken(tenant._id);
-  const refreshToken = generateRefreshToken(tenant._id);
-  tenant.refreshToken = refreshToken;
-  await tenant.save();
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
-  });
-  return res.status(200).json({
-    _id: tenant._id,
-    name: tenant.name,
-    email: tenant.email,
-    role: tenant.role,
-    avatar: tenant.avatar,
-    accessToken: accessToken,
-  });
 });
 
-const refreshTenantAccessToken = asyncHandler(async (req, res) => {
-  const { refreshToken } = req.cookies;
-  if (!refreshToken) {
-    return res.status(401).json({
-      status: "FAILED",
-      message: "Refresh token is missing from cookies.",
-    });
-  }
-  const tenant = await Tenant.findOne({ refreshToken });
-  if (!tenant) {
-    return res
-      .status(401)
-      .json({ status: "FAILED", message: "Invalid refresh token." });
-  }
+const refreshTenantAccessToken = asyncHandler(async (req, res, next) => {
   try {
+    const { refreshToken } = req.cookies;
+    if (!refreshToken) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Session expired. Please log in to continue.",
+      });
+    }
+    const tenant = await Tenant.findOne({ refreshToken });
+    if (!tenant) {
+      return res
+        .status(401)
+        .json({ status: "FAILED", message: "Invalid refresh token." });
+    }
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
     if (tenant.id !== decoded.id) {
       return res.status(403).json({
         status: "FAILED",
-        message: "Unauthorized access. Please log in again.",
+        message: "Unauthorized access. Please log in to continue.",
       });
     }
     const newAccessToken = generateAccessToken(tenant._id);
     req.tenant = tenant;
     return newAccessToken; // Return new access token
   } catch (error) {
-    return res.status(403).json({
-      status: "FAILED",
-      message: "Invalid or expired refresh token. Please log in again.",
-    });
+    next(error);
   }
 });
 
-const updatePassword = asyncHandler(async (req, res) => {
-  const { _id } = req.tenant;
-  const { password, confirmPassword } = req.body;
-
-  if (!password || !confirmPassword) {
-    return res
-      .status(400)
-      .json({ message: "Please fill in all the required fields." });
-  }
-
+const updatePassword = asyncHandler(async (req, res, next) => {
   try {
-    validateMongoDbId(_id);
-  } catch (error) {
-    return res.status(400).json({
-      message: "We couldn't find an account associated with this id.",
-    });
-  }
-  try {
+    const { password, confirmPassword } = req.body;
+    if (!password || !confirmPassword) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please fill in all the required fields.",
+      });
+    }
+
     validatePassword(password);
-  } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
-  }
-
-  try {
     validatePassword(confirmPassword);
-  } catch (error) {
-    return res.status(400).json({
-      message:
-        "Password must have at least 8 characters, one uppercase letter, one lowercase letter, one number, and one special character.",
-    });
-  }
-  if (password !== confirmPassword) {
-    return res
-      .status(400)
-      .json({ message: "Password and confirm password values do not match." });
-  }
-  const tenant = await Tenant.findById(_id);
-  if (!tenant) {
-    return res.status(404).json({
-      message: "We couldn't find an account associated with this id.",
-    });
-  }
-  if (await tenant.isPasswordMatched(password)) {
-    return res.status(400).json({
-      message:
-        "Please choose a new password that is different from the old one.",
-    });
-  }
-  tenant.password = password;
-  await tenant.save();
 
-  return res.status(200).json({
-    message:
-      "Your password has been update. Proceed to log in with the new password.",
-  });
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        message: "Password and confirm password values do not match.",
+      });
+    }
+    const tenant = await Tenant.findById(req.tenant._id).select("+password");
+    if (!tenant) {
+      return res.status(404).json({
+        status: "FAILED",
+        message: "Tenant not found.",
+      });
+    }
+    // check if the new password is the same as the old password
+    if (await tenant.isPasswordMatched(password)) {
+      return res.status(400).json({
+        status: "FAILED",
+        message:
+          "Please choose a new password that is different from the old one.",
+      });
+    }
+    tenant.password = password;
+    await tenant.save();
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message:
+        "Your password has been update. Proceed to log in with the new password.",
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
-const passwordResetToken = asyncHandler(async (req, res) => {
+const passwordResetToken = asyncHandler(async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email) {
-      return res
-        .status(400)
-        .json({ message: "Please provide your email address." });
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide your email address.",
+      });
     }
 
     if (!emailValidator.validate(email)) {
-      return res
-        .status(400)
-        .json({ message: "Please provide a valid email address." });
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide a valid email address.",
+      });
     }
 
     const tenant = await Tenant.findOne({ email });
@@ -324,20 +323,65 @@ const passwordResetToken = asyncHandler(async (req, res) => {
       template: "tenant-reset-password-token-mail.ejs",
       data,
     });
-
-    console.log(token);
     return res.status(200).json({
+      status: "SUCCESSS",
       message: `A password reset link has been sent to ${tenant.email}. Please check your email inbox and follow the instructions to reset your password.`,
     });
   } catch (error) {
-    return res.status(500).json({
-      status: "FAILED",
-      message: "The application has experienced an error. Please try again.",
-    });
+    next(error);
   }
 });
 
-const logout = asyncHandler(async (req, res) => {
+const resetPassword = asyncHandler(async (req, res, next) => {
+  try {
+    const { password, confirmPassword } = req.body;
+    if (!password || !confirmPassword) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Please provide all the required fields.",
+      });
+    }
+    validatePassword(password);
+    validatePassword(confirmPassword);
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        message: "Password and confirm password values do not match.",
+      });
+    }
+    const { token } = req.params;
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const tenant = await Tenant.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    }).select("+password");
+    if (!tenant) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Invalid password reset token.",
+      });
+    }
+    if (await landlord.isPasswordMatched(password)) {
+      return res.status(400).json({
+        status: "FAILED",
+        message:
+          "Please choose a new password that is different from the old one.",
+      });
+    }
+    tenant.password = password;
+    tenant.passwordResetToken = undefined;
+    tenant.passwordResetExpires = undefined;
+    await landlord.save();
+    return res.json({
+      status: "SUCCESS",
+      message: "Your password has been successfully reset. Proceed to login.",
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const logout = asyncHandler(async (req, res, next) => {
   try {
     const cookie = req.cookies;
     if (!cookie.refreshToken) {
@@ -376,41 +420,6 @@ const logout = asyncHandler(async (req, res) => {
       message: "You have successfully logged out.",
     });
   } catch (error) {
-    return res.status(500).json({
-      status: "FAILED",
-      message: error.message,
-    });
-  }
-});
-
-const deleteATenant = asyncHandler(async (req, res) => {
-  try {
-    const { tenantId } = req.params;
-    const deletedTenant = await Tenant.findOneAndUpdate(
-      { landlord: req.landlord._id, _id: tenantId },
-      // update three fields => isDeleted set to true, deletedAt, accountStatus is set to disabled.
-      {
-        isDeleted: true,
-        deletedAt: Date.now(),
-        accountStatus: "Disabled",
-      },
-      {
-        new: true,
-      }
-    );
-
-    if (!deletedTenant) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Tenant not found." });
-    }
-
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: "Tenant Account deleted successfully.",
-      data: deletedTenant,
-    });
-  } catch (error) {
     next(error);
   }
 });
@@ -418,7 +427,6 @@ const deleteATenant = asyncHandler(async (req, res) => {
 module.exports = {
   addATenant,
   SignInTenant,
-  deleteATenant,
   updatePassword,
   refreshTenantAccessToken,
   passwordResetToken,

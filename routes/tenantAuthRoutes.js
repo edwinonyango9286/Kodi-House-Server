@@ -7,7 +7,6 @@ const {
   refreshTenantAccessToken,
   updatePassword,
   passwordResetToken,
-  deleteATenant,
   addATenant,
 } = require("../controllers/tenantAuthController");
 const {
@@ -29,12 +28,7 @@ router.post(
 router.post("/signin_tenant", SignInTenant);
 router.put("/refresh_tenant_access_token", refreshTenantAccessToken);
 router.put("/update_password", updatePassword);
-router.delete(
-  "/delete_a_tenant/:tenantId",
-  landlordAuthMiddleware,
-  isAValidLandlord,
-  deleteATenant
-);
+
 router.post("/request_tenant_password_reset_token", passwordResetToken);
 router.put("/logout", logout);
 

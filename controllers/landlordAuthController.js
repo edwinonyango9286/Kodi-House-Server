@@ -177,7 +177,7 @@ const verifyLandlordAccount = asyncHandler(async (req, res) => {
   }
 });
 
-const sigInLandlord = asyncHandler(async (req, res) => {
+const sigInLandlord = asyncHandler(async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -203,14 +203,18 @@ const sigInLandlord = asyncHandler(async (req, res) => {
       });
     }
     if (landlord && landlord.role !== "landlord") {
-      return res.status(401).json({ message: "Not authorised." });
+      return res
+        .status(401)
+        .json({ status: "FAILED", message: "Not authorised." });
     }
     if (
       landlord &&
       landlord.role === "landlord" &&
       !(await landlord.isPasswordMatched(password))
     ) {
-      res.status(403).json({ message: "Wrong email or password." });
+      return res
+        .status(403)
+        .json({ status: "FAILED", message: "Wrong email or password." });
     }
     const accessToken = generateAccessToken(landlord._id);
     const refreshToken = generateRefreshToken(landlord._id);
@@ -223,7 +227,6 @@ const sigInLandlord = asyncHandler(async (req, res) => {
       // refresh token will be removed from cookies in 7 days.
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     });
-
     // remove password from the landlord object
     const landlordData = { ...landlord.toObject() };
     delete landlordData.password;
@@ -231,42 +234,24 @@ const sigInLandlord = asyncHandler(async (req, res) => {
 
     return res.status(200).json({
       status: "SUCCESS",
-      message: "Sign in success.",
-      landlord: landlordData,
+      message: "You've successfully signed in.",
+      data: landlordData,
       accessToken: accessToken,
     });
   } catch (error) {
-    return res.status(500).json({
-      status: "FAILED",
-      message: error.message,
-    });
-  }
-});
-
-// get the landlord
-const me = asyncHandler(async (req, res) => {
-  try {
-    const me = await Landlord.findById({ _id: req.landlord._id });
-    if (!me) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "User not found." });
-    }
-    return res.status(200).json({ status: "SUCCESS", data: me });
-  } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 // Generates new access token from refresh token for the landlord
-const refreshLandlordAccesToken = asyncHandler(async (req, res) => {
+const refreshLandlordAccesToken = asyncHandler(async (req, res, next) => {
   try {
     const { refreshToken } = req.cookies;
     if (!refreshToken) {
       return res.status(400).json({
         status: "FAILED",
-        // if refresh token is missing from cookies it means the refresh token has expired has been removed from cookies
-        message: "Session Expired. Please log in to continue.",
+        // if refresh token is missing from cookies it means the refresh token has expired from the browser cookies
+        message: "Session expired. Please log in to continue.",
       });
     }
     const landlord = await Landlord.findOne({ refreshToken });
@@ -286,14 +271,11 @@ const refreshLandlordAccesToken = asyncHandler(async (req, res) => {
     req.landlord = landlord;
     return newAccessToken; // Return the new access token
   } catch (error) {
-    return res.status(500).json({
-      status: "FAILED",
-      message: error.message,
-    });
+    next(error);
   }
 });
 
-const updatePassword = asyncHandler(async (req, res) => {
+const updatePassword = asyncHandler(async (req, res, next) => {
   try {
     const { password, confirmPassword } = req.body;
     if (!password || !confirmPassword) {
@@ -316,6 +298,7 @@ const updatePassword = asyncHandler(async (req, res) => {
     );
     if (!landlord) {
       return res.status(404).json({
+        status: "FAILED",
         message: "Landlord not found.",
       });
     }
@@ -329,18 +312,13 @@ const updatePassword = asyncHandler(async (req, res) => {
     landlord.password = password;
     await landlord.save();
 
-    // remove password from landlord object
-    const landlordData = { ...landlord.toObject() };
-    delete landlordData.password;
-
     return res.status(200).json({
       status: "SUCCESS",
       message:
         "Your password has been update. Proceed to log in with the new password.",
-      data: landlordData,
     });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
@@ -370,8 +348,6 @@ const passwordResetToken = asyncHandler(async (req, res) => {
       });
     }
     const token = await landlord.createPasswordResetToken();
-    // console.log token for test
-    console.log(token);
     await landlord.save();
     const data = { landlord: { name: landlord.name }, token };
     await sendMail({
@@ -392,7 +368,7 @@ const passwordResetToken = asyncHandler(async (req, res) => {
   }
 });
 
-const resetPassword = asyncHandler(async (req, res) => {
+const resetPassword = asyncHandler(async (req, res, next) => {
   try {
     const { password, confirmPassword } = req.body;
     if (!password || !confirmPassword) {
@@ -405,6 +381,7 @@ const resetPassword = asyncHandler(async (req, res) => {
     validatePassword(confirmPassword);
     if (password !== confirmPassword) {
       return res.status(400).json({
+        status: "FAILED",
         message: "Password and confirm password values do not match.",
       });
     }
@@ -437,10 +414,7 @@ const resetPassword = asyncHandler(async (req, res) => {
       message: "Your password has been successfully reset. Proceed to login.",
     });
   } catch (error) {
-    return res.status(500).json({
-      status: "FAILED",
-      message: error.message,
-    });
+    next(error);
   }
 });
 
@@ -479,7 +453,7 @@ const logout = asyncHandler(async (req, res) => {
     });
     return res.status(200).json({
       status: "SUCCESS",
-      message: "You have successfully logged out.",
+      message: "You've successfully logged out.",
     });
   } catch (error) {
     return res.status(500).json({
@@ -499,7 +473,6 @@ module.exports = {
   passwordResetToken,
   resetPassword,
   refreshLandlordAccesToken,
-  logout,
-  me,
   verifyLandlordAccount,
+  logout,
 };

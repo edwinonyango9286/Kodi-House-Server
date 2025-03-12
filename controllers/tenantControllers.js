@@ -3,45 +3,120 @@ const Tenant = require("../models/tenantModel");
 const logger = require("../utils/logger");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const _ = require("lodash");
+const validatePhoneNumber = require("../utils/validatePhoneNumber");
+const emailValidator = require("email-validator");
 
 // general update for a tenant by landlord => only update a tenant whose account is not deleted
-const updateATenant = expressAsyncHandler(async (req, res, next) => {
-  try {
-    const { tenantId } = req.params;
-    validateMongoDbId(tenantId);
-    const updatedTenant = await Tenant.findOneAndUpdate(
-      {
-        _id: tenantId,
-        landlord: req.landlord._id,
-        isDeleted: false,
-        deletedAt: null,
-      },
-      {
-        ...req.body,
-        // change the first letters of the names to uppercase
-        firstName: _.startCase(_.toLower(firstName)),
-        secondName: _.startCase(_.toLower(secondName)),
-      },
-      {
-        new: true,
-        runValidators: true,
+const updateTenantDetailsLandlord = expressAsyncHandler(
+  async (req, res, next) => {
+    try {
+      const { tenantId } = req.params;
+      validateMongoDbId(tenantId);
+      const { firstName, secondName, email, phoneNumber } = req.body;
+      if (!firstName || !secondName || !email || !phoneNumber) {
+        return res.status(400).json({
+          status: "FAILED",
+          message: "Please provide all the required fields.",
+        });
       }
-    );
-    if (!updatedTenant) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Tenant not found." });
+      validatePhoneNumber(phoneNumber);
+      if (!emailValidator.validate(email)) {
+        return res.status(400).json({
+          status: "FAILED",
+          message: "Please provide a valid email address.",
+        });
+      }
+      const updatedTenant = await Tenant.findOneAndUpdate(
+        {
+          _id: tenantId,
+          landlord: req.landlord._id,
+          isDeleted: false,
+          deletedAt: null,
+        },
+        {
+          ...req.body,
+          // change the first letters of the names to uppercase
+          firstName: _.startCase(_.toLower(firstName)),
+          secondName: _.startCase(_.toLower(secondName)),
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+      if (!updatedTenant) {
+        return res.status(404).json({
+          status: "FAILED",
+          message: "Tenant not found.",
+        });
+      }
+      return res.status(200).json({
+        status: "SUCCESS",
+        message: "Tenant Updated successfully.",
+        data: updatedTenant,
+      });
+    } catch (error) {
+      next(error);
     }
-    return res
-      .status(200)
-      .json({ status: "SUCCESS", message: "Tenant Updated successfully." });
-  } catch (error) {
-    next(error);
   }
-});
+);
+
+// update tenant =>tenant
+const updateTenantDetailsTenant = expressAsyncHandler(
+  async (req, res, next) => {
+    try {
+      const { tenantId } = req.params;
+      validateMongoDbId(tenantId);
+      const { firstName, secondName, email, phoneNumber } = req.body;
+      if (!firstName || !secondName || !email || !phoneNumber) {
+        return res.status(400).json({
+          status: "FAILED",
+          message: "Please provide all required fileds.",
+        });
+      }
+      validatePhoneNumber(phoneNumber);
+      if (!emailValidator.validate(email)) {
+        return res.status(400).json({
+          status: "FAILED",
+          message: "Please provide a valid email address.",
+        });
+      }
+      const updatedTenant = await Tenant.findOneAndUpdate(
+        {
+          _id: tenantId,
+          isDeleted: false,
+          deletedAt: null,
+        },
+        {
+          ...req.body,
+          // change the first letters of the names to uppercase
+          firstName: _.startCase(_.toLower(firstName)),
+          secondName: _.startCase(_.toLower(secondName)),
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+      if (!updatedTenant) {
+        return res
+          .status(404)
+          .json({ status: "FAILED", message: "Tenant not found." });
+      }
+      return res.status(200).json({
+        status: "SUCCESS",
+        message: "Tenant Updated successfully.",
+        data: updatedTenant,
+      });
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  }
+);
 
 // landlord disable Tenant account
-const disableTenantAccount = expressAsyncHandler(async (req, res, next) => {
+const disableTenant = expressAsyncHandler(async (req, res, next) => {
   try {
     const { tenantId } = req.params;
     validateMongoDbId(tenantId);
@@ -49,12 +124,12 @@ const disableTenantAccount = expressAsyncHandler(async (req, res, next) => {
     const disabledTenant = await Tenant.findOneAndUpdate(
       {
         _id: tenantId,
-        landlord: req.body._id,
+        landlord: req.landlord._id,
       },
       {
         accountStatus: "Disabled",
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
     if (!disabledTenant) {
       return res
@@ -64,6 +139,36 @@ const disableTenantAccount = expressAsyncHandler(async (req, res, next) => {
     return res.status(200).json({
       status: "SUCCESS",
       message: "Tenant account disbaled successfully.",
+      data: disabledTenant,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const activateTenant = expressAsyncHandler(async (req, res, next) => {
+  try {
+    const { tenantId } = req.params;
+    validateMongoDbId(tenantId);
+    const enabledTenant = await Tenant.findOneAndUpdate(
+      {
+        _id: tenantId,
+        landlord: req.landlord._id,
+      },
+      { accountStatus: "Active" },
+      { new: true, runValidators: true }
+    );
+
+    if (!enabledTenant) {
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Tenant not found." });
+    }
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Tenant account enabled successfully.",
+      data: enabledTenant,
     });
   } catch (error) {
     next(error);
@@ -95,11 +200,10 @@ const getAllTenants = expressAsyncHandler(async (req, res, next) => {
       .populate("properties")
       //  a tenant can have more that one unit assigned to them
       .populate("units");
-
     // sorting
     if (req.query.sort) {
       const sortBy = req.query.sort.split(",").join(" ");
-      query = req.sort(sortBy);
+      query = query.sort(sortBy);
     } else {
       query = query.sort("-createdAt");
     }
@@ -124,24 +228,68 @@ const getAllTenants = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-// get all tenants whose accounts are deleted  => by landlord
-const getAllDeletedTenants = expressAsyncHandler(async (req, res, next) => {
+//Delete a tenant => landlord
+const deleteTenantLandlord = expressAsyncHandler(async (req, res, next) => {
   try {
-    const deletedTenants = await Tenant.find({
-      landlord: req.landlord._id,
-      isDeleted: true,
-      accountStatus: "Diasbled",
+    const { tenantId } = req.params;
+    validateMongoDbId(tenantId);
+    const deletedTenant = await Tenant.findOneAndUpdate(
+      { landlord: req.landlord._id, _id: tenantId },
+      {
+        isDeleted: true,
+        deletedAt: Date.now(),
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+    if (!deletedTenant) {
+      return res
+        .status(404)
+        .json({ status: "FAILED", message: "Tenant not found." });
+    }
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Tenant Account deleted successfully.",
+      data: deletedTenant,
     });
+  } catch (error) {
+    next(error);
+  }
+});
 
-    return res.status(200).json({ status: "SUCCESS", data: deletedTenants });
+// Tenant deletes own account => Tenant
+const deleteTenantTenant = expressAsyncHandler(async (req, res, next) => {
+  try {
+    const deletedTenant = await Tenant.findOneAndUpdate(
+      {
+        _id: req.tenant._id,
+      },
+      { isDeleted: true, deletedAt: Date.now() },
+      { new: true, runValidators: true }
+    );
+    if (!deletedTenant) {
+      return res
+        .status(400)
+        .json({ status: "FAILED", message: "Tenant not found." });
+    }
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Tenant deleted successfully.",
+      data: deletedTenant,
+    });
   } catch (error) {
     next(error);
   }
 });
 
 module.exports = {
-  updateATenant,
-  getAllDeletedTenants,
+  updateTenantDetailsLandlord,
   getAllTenants,
-  disableTenantAccount,
+  disableTenant,
+  activateTenant,
+  updateTenantDetailsTenant,
+  deleteTenantLandlord,
+  deleteTenantTenant,
 };

@@ -16,6 +16,7 @@ const landlordAuthMiddleware = asyncHandler(async (req, res, next) => {
   const authorizationHeader = req?.headers?.authorization;
   if (!authorizationHeader || !authorizationHeader.startsWith("Bearer")) {
     return res.status(401).json({
+      status: "FAILED",
       message: "Authorization header missing. Please log in to continue.",
     });
   }
@@ -60,6 +61,7 @@ const tenantAuthMiddleware = asyncHandler(async (req, res, next) => {
   const authorizationHeader = req?.headers?.authorization;
   if (!authorizationHeader || !authorizationHeader.startsWith("Bearer")) {
     return res.status(401).json({
+      status: "FAILED",
       message: "Authorization header missing. Please log in to continue.",
     });
   }
@@ -182,7 +184,7 @@ const isSuperAdmin = asyncHandler(async (req, res, next) => {
   next();
 });
 
-const isTenant = asyncHandler(async (req, res, next) => {
+const isAValidTenant = asyncHandler(async (req, res, next) => {
   const { email } = req.tenant;
   const tenant = await Tenant.findOne({ email });
   if (!tenant) {
@@ -197,6 +199,12 @@ const isTenant = asyncHandler(async (req, res, next) => {
       .status(403)
       .json({ status: "FAILED", message: "Not authorized." });
   }
+  if (tenant.accountStatus === "Disabled") {
+    return res.status(403).json({
+      status: "FAILED",
+      message: "Your account has been deactivated.",
+    });
+  }
   next();
 });
 
@@ -207,7 +215,8 @@ const isAValidLandlord = asyncHandler(async (req, res, next) => {
   if (!landlord) {
     return res.status(404).json({
       status: "FAILED",
-      message: "Landlord not found.",
+      message:
+        "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
     });
   }
   if (landlord.role !== "landlord") {
@@ -236,6 +245,6 @@ module.exports = {
   tenantAuthMiddleware,
   adminAuthMiddleware,
   isAValidLandlord,
-  isTenant,
+  isAValidTenant,
   isSuperAdmin,
 };

@@ -8,7 +8,6 @@ const {
   resetPassword,
   logout,
   refreshLandlordAccesToken,
-  me,
   verifyLandlordAccount,
 } = require("../controllers/landlordAuthController");
 const {
@@ -36,6 +35,5 @@ router.post("/logout", logout);
 // put routes
 router.put("/update_landlord_password", landlordAuthMiddleware, updatePassword);
 router.put("/reset_password/:token", resetPassword);
-router.get("/me", landlordAuthMiddleware, me);
 
 module.exports = router;

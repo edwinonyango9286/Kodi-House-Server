@@ -2,35 +2,21 @@ const Landlord = require("../models/landlordModel");
 const expressAsyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 
-// get landlord with all related data => tenants, properties, etc.
-
-const getALandlordWithAllRelatedData = expressAsyncHandler(async (req, res) => {
+// get landlord profile
+const me = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { _id } = req.landlord;
-    validateMongoDbId(_id);
-    // landlord to be populated when data is available
-    const landlord = await Landlord.findById({ _id: _id });
-    // .populate("users")
-    // .populate("properties")
-    // .populate("tenants")
-    // .populate("applications")
-    // .populate("invoices");
-    if (!landlord) {
+    const me = await Landlord.findById({ _id: req.landlord._id });
+    if (!me) {
       return res
         .status(404)
-        .json({ status: "FAILED", message: "Landlord not found." });
+        .json({ status: "FAILED", message: "User not found." });
     }
-    // removes refresh token from the landlord
-    const { refreshToken, ...landlordWithoutRefreshToken } =
-      landlord.toObject();
-    return res
-      .status(200)
-      .json({ status: "SUCCESS", landlord: landlordWithoutRefreshToken });
+    return res.status(200).json({ status: "SUCCESS", data: me });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 module.exports = {
-  getALandlordWithAllRelatedData,
+  me,
 };
