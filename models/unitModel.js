@@ -13,6 +13,17 @@ const unitSchema = new mongoose.Schema(
         message: (props) => `${props} is not a valid objectId`,
       },
     },
+    currentOccupant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
+      default: null,
+      validate: {
+        validator: function (id) {
+          return id === null || mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props} is not a valid objectId`,
+      },
+    },
     property: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Property",
@@ -58,7 +69,6 @@ const unitSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      lowercase: true,
       minlength: 2,
       maxlength: 2000,
     },

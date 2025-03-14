@@ -20,11 +20,12 @@ const propertyRouter = require("./routes/propertyRoute");
 const adminAuthRouter = require("./routes/adminAuthRoutes");
 const invoiceRouter = require("./routes/invoiceRoutes");
 const userRouter = require("./routes/userRoutes");
-const unitRouter = require("./routes/unitRouter");
+const unitRouter = require("./routes/unitRoute");
 const propertyCategoryRouter = require("./routes/propertyCategoryRoutes");
 const unitCategoryRouter = require("./routes/unitCategoryRoute");
 
 app.use(express.json({ limit: "50mb" }));
+
 
 const origins = [
   process.env.ORIGIN_LOCALHOST_3000,
@@ -41,7 +42,7 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-    methods: ["POST", "GET", "PUT", "DELETE", "OPTIONS", "HEAD"],
+    methods: ["POST", "GET", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
     exposedHeaders: ["Content-Type", "Authorization"],

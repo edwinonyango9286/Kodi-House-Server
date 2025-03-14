@@ -30,6 +30,7 @@ const registerSuperAdmin = expressAsyncHandler(async (req, res) => {
     const existingSuperAdmin = await Admin.findOne({ email });
     if (existingSuperAdmin) {
       return res.status(409).json({
+        status: "FAILED",
         message:
           "An account with this email address already exists. Please use a different email address or log in to your existing account.",
       });
@@ -69,7 +70,6 @@ const signInSuperAdmin = expressAsyncHandler(async (req, res) => {
         .status(404)
         .json({ status: "FAILED", message: "User not found." });
     }
-
     // check if the user is a super admin
     if (superAdmin && superAdmin.role !== "superAdmin") {
       return res

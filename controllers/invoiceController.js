@@ -1,6 +1,7 @@
 const expressAsyncHandler = require("express-async-handler");
 const Invoice = require("../models/invoiceModel");
 const validateMongoDbId = require("../utils/validateMongoDbId");
+const { Logger } = require("winston");
 
 // generate a random string for invoice number
 const generateARandomString = (stringLength) => {
@@ -50,7 +51,6 @@ const createInvoice = expressAsyncHandler(async (req, res) => {
         message: "Please provide all the required fields.",
       });
     }
-
     const createdInvoice = await Invoice.create({
       ...req.body,
       landlord: req.landlord._id,
@@ -64,6 +64,39 @@ const createInvoice = expressAsyncHandler(async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ status: "FAILED", message: error.message });
+  }
+});
+
+const updateAnInvoice = expressAsyncHandler(async (req, res, next) => {
+  try {
+    const { invoiceId } = req.params;
+    validateMongoDbId(invoiceId);
+    // invoice number should not be updated so delete it from the request object
+    const fieldsToUpdate = { ...req.body };
+    delete fieldsToUpdate.invoiceNumber;
+
+    const updatedInvoice = await Invoice.findOneAndUpdate(
+      {
+        _id: invoiceId,
+        landlord: req.landlord._id,
+      },
+      fieldsToUpdate,
+      { new: true, runValidators: true }
+    );
+    if (!updatedInvoice) {
+      return res
+        .status(400)
+        .json({ status: "FAILED", message: "Invoice not found." });
+    }
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Invoice updated successfully.",
+      data: updatedInvoice,
+    });
+  } catch (error) {
+    Logger.error(error);
+    next(error);
   }
 });
 
@@ -85,10 +118,9 @@ const getAllInvoices = expressAsyncHandler(async (req, res) => {
     deletedAt: null,
     landlord: req.landlord._id,
   }) //populate fields
-    .populate("landlord")
-    .populate("tenant")
-    .populate("property")
-    .populate("unit");
+    .populate({ path: "tenant", select: "firstName secondName" })
+    .populate({ path: "property", select: "name" })
+    .populate({ path: "unit", select: "unitNumber" });
 
   // sorting
   if (req.query.sort) {
@@ -145,4 +177,9 @@ const deleteAnInvoice = expressAsyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { getAllInvoices, createInvoice, deleteAnInvoice };
+module.exports = {
+  getAllInvoices,
+  createInvoice,
+  deleteAnInvoice,
+  updateAnInvoice,
+};

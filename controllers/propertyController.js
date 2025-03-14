@@ -3,14 +3,7 @@ const expressAsyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const Tenant = require("../models/tenantModel");
 const _ = require("lodash");
-
-const toSentenceCase = (str) => {
-  return str
-    .toLowerCase() // Convert the entire string to lower case
-    .split(/(?<=[.!?])\s+/) // Split the string into sentences
-    .map((sentence) => _.capitalize(sentence)) // Capitalize each sentence
-    .join(" "); // Join the sentences back together
-};
+const { descriptionFormater } = require("../utils/stringFormaters");
 
 // add a new property
 const addAProperty = expressAsyncHandler(async (req, res, next) => {
@@ -72,7 +65,7 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
     const newProperty = await Property.create({
       ...req.body,
       name: _.startCase(_.toLower(name)),
-      briefDescription: toSentenceCase(briefDescription),
+      briefDescription: descriptionFormater(briefDescription),
       landlord: _id,
     });
     return res.status(201).json({
@@ -130,7 +123,7 @@ const updateAproperty = expressAsyncHandler(async (req, res, next) => {
       {
         ...req.body,
         name: _.startCase(_.toLower(name)),
-        briefDescription: toSentenceCase(briefDescription),
+        briefDescription: descriptionFormater(briefDescription),
       },
       { new: true }
     );
@@ -147,158 +140,96 @@ const updateAproperty = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-// get a property by id users
-const getAPropertyByIdUsers = expressAsyncHandler(async (req, res, next) => {
-  try {
-    const { propertyId } = req.params;
-    const property = await Property.findOne({
-      _id: propertyId,
-      isDeleted: false,
-      deletedAt: null,
-    });
-    if (!property) {
-      return res
-        .status(200)
-        .json({ status: "FAILED", message: "Property not found." });
-    }
-    return res.status(200).json({ status: "SUCCESS", data: property });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// get a property by Id=> for landlord
-const getApropertyByIdLandlord = expressAsyncHandler(async (req, res, next) => {
+const getApropertyById = expressAsyncHandler(async (req, res, next) => {
   try {
     const { propertyId } = req.params;
     validateMongoDbId(propertyId);
-    const property = await Property.findOne({
-      landlord: req.landlord._id,
+
+    // Build the query object
+    const query = {
       _id: propertyId,
       isDeleted: false,
       deletedAt: null,
-    })
-      .populate("currentOccupant")
-      .populate("users");
+    };
+
+    // If the request is from a landlord, add the landlord check
+    if (req.landlord && req.landlord._id) {
+      query.landlord = req.landlord._id;
+    }
+
+    const property = await Property.findOne(query)
+      .populate({ path: "landlord", select: "userName" })
+      .populate({ path: "category", select: "name" })
+      .populate({ path: "currentOccupant", select: "firstName secondName" })
+      .populate({ path: "users", select: "firstName secondName" });
+
     if (!property) {
       return res
         .status(404)
-        .json({ status: "SUCCESS", message: "Property not found." });
+        .json({ status: "FAILED", message: "Property not found." });
     }
+
     return res.status(200).json({ status: "SUCCESS", data: property });
   } catch (error) {
     next(error);
   }
 });
 
-// get all properties related to the landlord=>by the landlord
-const getAllPropertiesByLandlord = expressAsyncHandler(
-  async (req, res, next) => {
-    try {
-      const { _id } = req.landlord;
-      validateMongoDbId(_id);
+const getAllProperties = expressAsyncHandler(async (req, res, next) => {
+  try {
+    const queryObject = { ...req.query };
+    const excludeFields = ["page", "sort", "limit", "offset", "fields"];
+    // delete exluded fields in the queryObject
+    excludeFields.forEach((element) => delete queryObject[element]);
 
-      const queryObject = { ...req.query };
-      const excludeFields = ["page", "sort", "limit", "offset", "fields"];
-      // delete exluded fields in the queryObject
-      excludeFields.forEach((element) => delete queryObject[element]);
+    let queryString = JSON.stringify(queryObject);
+    queryString = queryString.replace(
+      /\b(gte|gt|lte|lt)\b/g,
+      (match) => `$${match}`
+    );
 
-      let queryString = JSON.stringify(queryObject);
-      queryString = queryString.replace(
-        /\b(gte|gt|lte|lt)\b/g,
-        (match) => `$${match}`
-      );
-
-      let query = Property.find({
-        ...JSON.parse(queryString),
-        isDeleted: false,
-        deletedAt: null,
-        landlord: _id,
-      }) //populate for landlord
-        .populate("landlord")
-        .populate("currentOccupant")
-        .populate("users");
-
-      // sorting
-      if (req.query.sort) {
-        const sortBy = req.query.sort.split(",").join(" ");
-        query = query.sort(sortBy);
-      } else {
-        query = query.sort("-createdAt");
-      }
-
-      // field limiting
-      if (req.query.fields) {
-        const fields = req.query.fields.split(",").join(" ");
-        query = query.select(fields);
-      } else {
-        query = query.select("-__v");
-      }
-
-      // pagination
-      const limit = parseInt(req.query.limit, 10) || 10;
-      const offset = parseInt(req.query.offset, 10) || 0;
-      query = query.skip(offset).limit(limit);
-
-      const properties = await query;
-      return res.status(200).json({ status: "SUCCESS", properties });
-    } catch (error) {
-      next(error);
+    // check if the request is from a landlord then filter with landlord id
+    if (req.landlord && req.landlord._id) {
+      queryObject.landlord = req.landlord._id;
     }
-  }
-);
 
-// get all properties by all users
-const getAllPropertiesByAllUsers = expressAsyncHandler(
-  async (req, res, next) => {
-    try {
-      const queryObject = { ...req.query };
-      const excludeFields = ["page", "sort", "limit", "offset", "fields"];
-      excludeFields.forEach((element) => delete queryObject[element]);
+    let query = Property.find({
+      ...JSON.parse(queryString),
+      isDeleted: false,
+      deletedAt: null,
+    }) //populate for landlord
+      .populate({ path: "landlord", select: "userName" })
+      .populate({ path: "currentOccupant", select: "firstName secondName" })
+      .populate({ path: "users", select: "firstName secondName" })
+      .populate({ path: "category", select: "name" });
 
-      let queryString = JSON.stringify(queryObject);
-      queryString = queryString.replace(
-        /\b(gte|gt|lte|lt)\b/g,
-        (match) => `$${match}`
-      );
-
-      //do not return deleted properties
-      let query = Property.find({
-        ...JSON.parse(queryString),
-        isDeleted: false,
-        deletedAt: null,
-      })
-        .populate("landlord")
-        .populate("currentOccupant")
-        .populate("users");
-
-      // sorting
-      if (req.query.sort) {
-        const sortBy = req.query.sort.split(",").join(" ");
-        query = query.sort(sortBy);
-      } else {
-        query = query.sort("-createdAt");
-      }
-      // field limiting
-      if (req.query.fields) {
-        const fields = req.query.fields.split(",").join(" ");
-        query = query.select(fields);
-      } else {
-        query = query.select("-__v");
-      }
-
-      // pagination
-      const limit = parseInt(req.query.limit, 10) || 10;
-      const offset = parseInt(req.query.offset, 10) || 0;
-      query = query.skip(offset).limit(limit);
-
-      const properties = await query;
-      return res.status(200).json({ status: "SUCCESS", data: properties });
-    } catch (error) {
-      next(error);
+    // sorting
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort("-createdAt");
     }
+
+    // field limiting
+    if (req.query.fields) {
+      const fields = req.query.fields.split(",").join(" ");
+      query = query.select(fields);
+    } else {
+      query = query.select("-__v");
+    }
+
+    // pagination
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const offset = parseInt(req.query.offset, 10) || 0;
+    query = query.skip(offset).limit(limit);
+
+    const properties = await query;
+    return res.status(200).json({ status: "SUCCESS", properties });
+  } catch (error) {
+    next(error);
   }
-);
+});
 
 // asign a property and to a tenant=> only properties that there type are single unit can be asigned to a single tenant
 const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
@@ -379,6 +310,8 @@ const vacateATenantFromAProperty = expressAsyncHandler(
       const property = await Property.findOne({
         _id: propertyId,
         landlord: req.landlord._id,
+        isDeleted: false,
+        deletedAt: null,
       });
       if (!property) {
         return res
@@ -421,6 +354,8 @@ const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
       {
         _id: propertyId,
         landlord: req.landlord._id,
+        isDeleted: false,
+        deletedAt: null,
       },
       { isDeleted: true, deletedAt: Date.now() },
       {
@@ -443,12 +378,10 @@ const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
 
 module.exports = {
   addAProperty,
-  getApropertyByIdLandlord,
-  getAllPropertiesByLandlord,
-  getAllPropertiesByAllUsers,
+  getApropertyById,
+  getAllProperties,
   updateAproperty,
   deleteAProperty,
   asignPropertyToAtenant,
-  getAPropertyByIdUsers,
   vacateATenantFromAProperty,
 };

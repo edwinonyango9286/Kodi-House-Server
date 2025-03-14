@@ -3,6 +3,7 @@ const {
   getAllInvoices,
   createInvoice,
   deleteAnInvoice,
+  updateAnInvoice,
 } = require("../controllers/invoiceController");
 const {
   landlordAuthMiddleware,
@@ -29,6 +30,13 @@ router.delete(
   landlordAuthMiddleware,
   isAValidLandlord,
   deleteAnInvoice
+);
+
+router.patch(
+  "/update_an_invoice/:invoiceId",
+  landlordAuthMiddleware,
+  isAValidLandlord,
+  updateAnInvoice
 );
 
 module.exports = router;

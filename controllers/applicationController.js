@@ -4,7 +4,7 @@ const validateMongoDbId = require("../utils/validateMongoDbId");
 const validatePhoneNumber = require("../utils/validatePhoneNumber");
 const emailValidator = require("email-validator");
 
-// create an application
+// create an application => after a user has viwed a house and the user is interested in that house the user sends and application to the tenant to book a viewing date
 const createApplication = asyncHandler(async (req, res) => {
   const {
     firstName,

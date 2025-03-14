@@ -224,7 +224,7 @@ const isAValidLandlord = asyncHandler(async (req, res, next) => {
       .status(403)
       .json({ status: "FAILED", message: "Not authorized." });
   }
-  if (landlord.landlordAccountStatus === "Disabled") {
+  if (landlord.accountStatus === "Disabled") {
     return res.status(403).json({
       status: "FAILED",
       message: "Your account has been deactivated.",
@@ -233,7 +233,7 @@ const isAValidLandlord = asyncHandler(async (req, res, next) => {
   if (!landlord.isAccountVerrified) {
     return res.status(403).json({
       status: "FAILED",
-      message: "Your account has not been verified by admin.",
+      message: "Please wait for your account to be verified by admin.",
     });
   }
   next();

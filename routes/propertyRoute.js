@@ -8,11 +8,11 @@ const {
   getApropertyByIdLandlord,
   updateAproperty,
   asignPropertyToAtenant,
-  getAllPropertiesByLandlord,
-  getAllPropertiesByAllUsers,
+  getAllProperties,
   getAPropertyByIdUsers,
   deleteAProperty,
   vacateATenantFromAProperty,
+  getApropertyById,
 } = require("../controllers/propertyController");
 
 const router = express.Router();
@@ -24,24 +24,11 @@ router.post(
   addAProperty
 );
 router.get(
-  "/get_a_property_by_id_landlord/:propertyId",
-  landlordAuthMiddleware,
-  isAValidLandlord,
-  getApropertyByIdLandlord
+  "/get_a_property_by_id/:propertyId",
+  getApropertyById
 );
 
-// get all properties by all other users
-router.get("/get_a_property_by_id_users/:propertyId", getAPropertyByIdUsers);
-
-// get all properties by landlord => should return only properties related to the particular landlord
-router.get(
-  "/get_all_properties_by_landlord",
-  landlordAuthMiddleware,
-  isAValidLandlord,
-  getAllPropertiesByLandlord
-);
-
-router.get("/get_all_properties_by_all_users", getAllPropertiesByAllUsers);
+router.get("/get_all_properties", getAllProperties);
 
 router.put(
   "/update_a_property/:propertyId",
@@ -67,6 +54,7 @@ router.patch(
   isAValidLandlord,
   asignPropertyToAtenant
 );
+
 router.patch(
   "/vacate_tenant_from_a_property/:propertyId",
   landlordAuthMiddleware,

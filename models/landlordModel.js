@@ -4,34 +4,30 @@ const crypto = require("crypto");
 
 const landlordSchema = new mongoose.Schema(
   {
-    name: {
+    userName: {
       type: String,
       required: true,
       minlength: 2,
       maxlength: 50,
       trim: true,
-      lowercase: true,
     },
     firstName: {
       type: String,
       trim: true,
       minlength: 2,
       maxlength: 50,
-      lowercase: true,
     },
     secondName: {
       type: String,
       trim: true,
       minlength: 2,
       maxlength: 50,
-      lowercase: true,
     },
-    lastname: {
+    lastName: {
       type: String,
       trim: true,
       minlength: 2,
-      maxlength: 32,
-      lowercase: true,
+      maxlength: 50,
     },
     email: {
       type: String,
@@ -46,9 +42,12 @@ const landlordSchema = new mongoose.Schema(
     businessName: {
       type: String,
       trim: true,
-      lowercase: true,
       minlength: 2,
       maxlength: 50,
+    },
+    phoneNumber: {
+      type: String,
+      trim: true,
     },
     idNumber: {
       type: Number,
@@ -60,7 +59,6 @@ const landlordSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["landlord"],
       default: "landlord",
     },
     avatar: {
@@ -183,12 +181,22 @@ const landlordSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       sparse: true,
+      select: false,
     },
 
-    landlordAccountStatus: {
+    accountStatus: {
       type: String,
       enum: ["Active", "Disabled"],
       default: "Active",
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
     },
 
     termsAndConditionsAccepted: {

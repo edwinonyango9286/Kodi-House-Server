@@ -4,6 +4,8 @@ const validateMongoDbId = require("../utils/validateMongoDbId");
 const multer = require("multer");
 const xlsx = require("xlsx");
 const fs = require("fs");
+const _ = require("lodash");
+const { descriptionFormater } = require("../utils/stringFormaters");
 
 // add a new unit
 const addANewUnit = expressAsyncHandler(async (req, res, next) => {
@@ -36,7 +38,10 @@ const addANewUnit = expressAsyncHandler(async (req, res, next) => {
     }
 
     // Check if a unit with the same unit number already exists
-    const existingUnit = await Unit.findOne({ landlord: _id, unitNumber });
+    const existingUnit = await Unit.findOne({
+      landlord: _id,
+      unitNumber: unitNumber.toUpperCase(),
+    });
 
     if (existingUnit) {
       // If the unit exists and isDeleted is true, restore it
@@ -58,7 +63,12 @@ const addANewUnit = expressAsyncHandler(async (req, res, next) => {
       }
     }
     // If no existing unit, create a new one
-    const newUnit = await Unit.create({ ...req.body, landlord: _id });
+    const newUnit = await Unit.create({
+      ...req.body,
+      landlord: _id,
+      unitNumber: unitNumber.toUpperCase(),
+      shortDescription: descriptionFormater(shortDescription),
+    });
     return res.status(201).json({
       status: "SUCCESS",
       message: "Unit added successfully.",
@@ -108,11 +118,17 @@ const updateAUnit = expressAsyncHandler(async (req, res, next) => {
   const { unitId } = req.params;
   validateMongoDbId(_id);
   validateMongoDbId(unitId);
+  const { unitNumber, shortDescription } = req.body;
+
   try {
     // only update a unit which is not deleted
     const updatedUnit = await Unit.findOneAndUpdate(
       { _id: unitId, landlord: _id, isDeleted: false, deletedAt: null },
-      req.body,
+      {
+        ...req.body,
+        unitNumber: unitNumber.toUpperCase(),
+        shortDescription: descriptionFormater(shortDescription),
+      },
       { new: true, runValidators: true }
     );
     if (!updatedUnit) {
@@ -130,7 +146,7 @@ const updateAUnit = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-// get all units=> all units that are not deleted
+// get all units=> ruturns all units that are not deleted => this will work for both landlords and all other user including quest users in the website
 const getAllUnits = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
@@ -143,7 +159,18 @@ const getAllUnits = expressAsyncHandler(async (req, res, next) => {
     let queryStr = JSON.stringify(queryObject);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    let query = Unit.find(JSON.parse(queryStr));
+    // check if the request is from a landlord then filter by landlord id
+    if (req.landlord && req.landlord._id) {
+      queryObject.landlord = req.landlord._id;
+    }
+
+    let query = Unit.find(JSON.parse(queryStr))
+      .populate({
+        path: "landlord",
+        select: "userName",
+      })
+      .populate({ path: "property", select: "name" })
+      .populate({ path: "category", select: "name" });
 
     // sorting
     if (req.query.sort) {
@@ -167,23 +194,25 @@ const getAllUnits = expressAsyncHandler(async (req, res, next) => {
     query = query.skip(offset).limit(limit);
 
     const units = await query;
-
     return res.status(200).json({ status: "SUCCESS", data: units });
   } catch (error) {
     next(error);
   }
 });
 
-// delete a unit => update
+// delete a unit => in production deletion will be disabled
 const deleteAUnit = expressAsyncHandler(async (req, res, next) => {
   try {
     const { unitId } = req.params;
     validateMongoDbId(unitId);
+
+    // only get the unit if its  not deleted if the unit has already been deleted return  not found
     const deletedUnit = await Unit.findOneAndUpdate(
       {
         _id: unitId,
         landlord: req.landlord._id,
         isDeleted: false,
+        deletedAt: null,
       },
       { isDeleted: true, deletedAt: Date.now() },
       { new: true, runValidators: true }
@@ -204,6 +233,25 @@ const deleteAUnit = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
+// script to add fields to already created documents
+
+const addFields = expressAsyncHandler(async (req, res, next) => {
+  try {
+    const result = await Unit.updateMany(
+      {
+        currentOccupant: { $exist: false },
+      },
+      { $set: { currentOccupant: null } }
+    );
+
+    return res
+      .status(200)
+      .json({ status: "SUCCESS", message: "", data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = {
   getAllUnits,
   addANewUnit,
@@ -211,4 +259,5 @@ module.exports = {
   uploads,
   deleteAUnit,
   addMultipleUnitsFromExcelSheet,
+  addFields,
 };
