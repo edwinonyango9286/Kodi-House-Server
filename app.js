@@ -10,22 +10,18 @@ const morgan = require("morgan");
 const cors = require("cors");
 
 // routers
-const landlordAuthRouter = require("./routes/landlordAuthRoutes");
-const tenantAuthRouter = require("./routes/tenantAuthRoutes");
 const applicationRouter = require("./routes/applicationRoutes");
 const roleRouter = require("./routes/roleRoutes");
 const landlordRouter = require("./routes/landlordRoutes");
 const tenantRouter = require("./routes/tenantRoute");
 const propertyRouter = require("./routes/propertyRoute");
-const adminAuthRouter = require("./routes/adminAuthRoutes");
+const authRouter = require("./routes/authRoutes");
 const invoiceRouter = require("./routes/invoiceRoutes");
-const userRouter = require("./routes/userRoutes");
 const unitRouter = require("./routes/unitRoute");
 const propertyCategoryRouter = require("./routes/propertyCategoryRoutes");
 const unitCategoryRouter = require("./routes/unitCategoryRoute");
 
 app.use(express.json({ limit: "50mb" }));
-
 
 const origins = [
   process.env.ORIGIN_LOCALHOST_3000,
@@ -66,16 +62,13 @@ app.use(bodyParser.urlencoded({ limit: "5mb", extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
-app.use("/api/v1/landlord/auth", landlordAuthRouter);
-app.use("/api/v1/admin/auth", adminAuthRouter);
-app.use("/api/v1/tenant/auth", tenantAuthRouter);
+app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/application", applicationRouter);
 app.use("/api/v1/role", roleRouter);
 app.use("/api/v1/landlord", landlordRouter);
 app.use("/api/v1/tenant", tenantRouter);
 app.use("/api/v1/property", propertyRouter);
 app.use("/api/v1/invoice", invoiceRouter);
-app.use("/api/v1/user", userRouter);
 app.use("/api/v1/unit", unitRouter);
 app.use("/api/v1/propertyCategory", propertyCategoryRouter);
 app.use("/api/v1/unitCategory", unitCategoryRouter);

@@ -1,4 +1,3 @@
-const Landlord = require("../models/landlordModel");
 const expressAsyncHandler = require("express-async-handler");
 const logger = require("../utils/logger");
 const validatePhoneNumber = require("../utils/validatePhoneNumber");
@@ -14,7 +13,6 @@ const me = expressAsyncHandler(async (req, res, next) => {
         .status(404)
         .json({ status: "FAILED", message: "User not found." });
     }
-
     return res.status(200).json({ status: "SUCCESS", data: me });
   } catch (error) {
     next(error);

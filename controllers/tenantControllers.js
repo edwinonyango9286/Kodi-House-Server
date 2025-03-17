@@ -1,5 +1,5 @@
 const expressAsyncHandler = require("express-async-handler");
-const Tenant = require("../models/tenantModel");
+const User = require("../models/userModel");
 const logger = require("../utils/logger");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const _ = require("lodash");
@@ -26,7 +26,7 @@ const updateTenantDetailsLandlord = expressAsyncHandler(
           message: "Please provide a valid email address.",
         });
       }
-      const updatedTenant = await Tenant.findOneAndUpdate(
+      const updatedTenant = await User.findOneAndUpdate(
         {
           _id: tenantId,
           landlord: req.landlord._id,
@@ -121,7 +121,7 @@ const disableTenant = expressAsyncHandler(async (req, res, next) => {
     const { tenantId } = req.params;
     validateMongoDbId(tenantId);
     // disbale tenant=> update tenant status to disabled
-    const disabledTenant = await Tenant.findOneAndUpdate(
+    const disabledTenant = await User.findOneAndUpdate(
       {
         _id: tenantId,
         landlord: req.landlord._id,
@@ -150,7 +150,7 @@ const activateTenant = expressAsyncHandler(async (req, res, next) => {
   try {
     const { tenantId } = req.params;
     validateMongoDbId(tenantId);
-    const enabledTenant = await Tenant.findOneAndUpdate(
+    const enabledTenant = await User.findOneAndUpdate(
       {
         _id: tenantId,
         landlord: req.landlord._id,
@@ -189,17 +189,17 @@ const getAllTenants = expressAsyncHandler(async (req, res, next) => {
     );
 
     // get only tenants who are not deleted and who are related to a particular logged in landlord
-    let query = Tenant.find({
+    let query = User.find({
       ...JSON.parse(queryString),
       isDeleted: false,
       deletedAt: null,
       landlord: req.landlord._id,
     })
-      .populate("landlord")
+      .populate({ path: "landlord", select: "userName" })
       // a tenant can have more than one property assigned to them
-      .populate("properties")
+      .populate({ path: "properties", select: "name" })
       //  a tenant can have more that one unit assigned to them
-      .populate("units");
+      .populate({ path: "units", select: "unitNumber" });
     // sorting
     if (req.query.sort) {
       const sortBy = req.query.sort.split(",").join(" ");
@@ -233,7 +233,7 @@ const deleteTenantLandlord = expressAsyncHandler(async (req, res, next) => {
   try {
     const { tenantId } = req.params;
     validateMongoDbId(tenantId);
-    const deletedTenant = await Tenant.findOneAndUpdate(
+    const deletedTenant = await User.findOneAndUpdate(
       { landlord: req.landlord._id, _id: tenantId },
       {
         isDeleted: true,
@@ -262,7 +262,7 @@ const deleteTenantLandlord = expressAsyncHandler(async (req, res, next) => {
 // Tenant deletes own account => Tenant
 const deleteTenantTenant = expressAsyncHandler(async (req, res, next) => {
   try {
-    const deletedTenant = await Tenant.findOneAndUpdate(
+    const deletedTenant = await User.findOneAndUpdate(
       {
         _id: req.tenant._id,
       },

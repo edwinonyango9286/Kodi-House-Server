@@ -3,25 +3,29 @@ const mongoose = require("mongoose");
 // property categories applies to all the users
 const propertyCategorySchema = new mongoose.Schema(
   {
-    landlord: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Landlord",
-      required: true,
-      validate: {
-        validator: (id) => {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props.value} is not a valid ObjectId.`,
-      },
+      ref: "User",
     },
-
     name: {
       type: String,
       required: true,
       minlength: 2,
       maxlength: 50,
     },
-
+    status: {
+      type: String,
+      required: true,
+      enum: ["Active", "Disabled"],
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    slug: {
+      type: String,
+      required: true,
+    },
     isDeleted: {
       type: Boolean,
       default: false,

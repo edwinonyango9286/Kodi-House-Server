@@ -225,7 +225,7 @@ const getAllProperties = expressAsyncHandler(async (req, res, next) => {
     query = query.skip(offset).limit(limit);
 
     const properties = await query;
-    return res.status(200).json({ status: "SUCCESS", properties });
+    return res.status(200).json({ status: "SUCCESS", data: properties });
   } catch (error) {
     next(error);
   }

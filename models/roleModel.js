@@ -2,22 +2,20 @@ const mongoose = require("mongoose");
 
 const roleSchema = new mongoose.Schema(
   {
-    // landlord adding the role
-    landlord: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Landlord",
-      required: true,
-      validate: {
-        validator: function (id) {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props.value} is not a valid objectId`,
-      },
-    },
     name: {
       type: String,
       required: true,
     },
+    description: {
+      type: String,
+      required: true,
+    },
+    permissions: [
+      {
+        type: String,
+      },
+    ],
+
     isDeleted: {
       type: Boolean,
       default: false,

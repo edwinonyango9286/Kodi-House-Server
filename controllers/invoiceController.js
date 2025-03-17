@@ -140,7 +140,6 @@ const getAllInvoices = expressAsyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 10;
   const offset = parseInt(req.query.offset, 10) || 0;
   query = query.skip(offset).limit(limit);
-
   const invoices = await query;
   return res.status(200).json({ status: "SUCCESS", data: invoices });
 });
@@ -177,9 +176,41 @@ const deleteAnInvoice = expressAsyncHandler(async (req, res) => {
   }
 });
 
+const updateInvoiceStatus = expressAsyncHandler(async (req, res, next) => {
+  try {
+    const { invoiceId } = req.params;
+    const { status } = req.body;
+    const updatedInvoice = await Invoice.findOneAndUpdate(
+      {
+        _id: invoiceId,
+        landlord: req.landlord._id,
+        isDeleted: false,
+        deletedAt: null,
+      },
+      { status: status },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedInvoice) {
+      return res
+        .status(200)
+        .message({ status: "FAILED", message: "Invoice not found." });
+    }
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Invoice updated successfully.",
+      data: updatedInvoice,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = {
   getAllInvoices,
   createInvoice,
   deleteAnInvoice,
   updateAnInvoice,
+  updateInvoiceStatus,
 };

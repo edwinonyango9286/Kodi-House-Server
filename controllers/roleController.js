@@ -2,30 +2,34 @@ const Role = require("../models/roleModel");
 const expressAsyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const _ = require("lodash");
+const { descriptionFormater } = require("../utils/stringFormaters");
+const logger = require("../utils/logger");
 
-const addARole = expressAsyncHandler(async (req, res) => {
+const addARole = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { _id } = req.landlord;
-    validateMongoDbId(_id);
-    const { name } = req.body;
-    if (!name) {
+    // Its only the admin that will be able to add a role=> if a role is needed and it missing
+    const { name, description } = req.body;
+    if (!name || !description) {
       return res.status(400).json({
         status: "FAILED",
         message: "Please provide all the required fields.",
       });
     }
-    let role = await Role.findOne({
-      landlord: _id,
+    // check if the role already exist by name
+    const existingRole = await Role.findOne({
       name: _.startCase(_.toLower(name)),
     });
     // if the role already exist and isDeleted is true then update the role
-    if (role) {
-      if (role.isDeleted) {
-        (role.isDeleted = false), (role.deletedAt = null), await role.save();
-        return res.status(200).json({
+    if (existingRole) {
+      if (existingRole.isDeleted) {
+        (existingRole.isDeleted = false),
+          (existingRole.deletedAt = null),
+          (existingRole.description = descriptionFormater(description));
+        await existingRole.save();
+        return res.status(201).json({
           status: "SUCCESS",
           message: "Role created successfully.",
-          data: role,
+          data: existingRole,
         });
       } else {
         return res
@@ -33,11 +37,10 @@ const addARole = expressAsyncHandler(async (req, res) => {
           .json({ status: "FAILED", message: "Role already exist." });
       }
     }
-
     const createdRole = await Role.create({
       ...req.body,
       name: _.startCase(_.toLower(name)),
-      landlord: _id,
+      description: descriptionFormater(description),
     });
     if (createdRole) {
       return res.status(201).json({
@@ -47,7 +50,8 @@ const addARole = expressAsyncHandler(async (req, res) => {
       });
     }
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    logger.error(error);
+    next(error);
   }
 });
 
@@ -119,17 +123,18 @@ const updateARole = expressAsyncHandler(async (req, res) => {
   }
 });
 
-const getAllRoles = expressAsyncHandler(async (req, res) => {
+// only admins should be able to view all the roles
+const getAllRoles = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { _id } = req.landlord;
-    validateMongoDbId(_id);
+    // const { _id } = req.landlord;
+    // validateMongoDbId(_id);
     const roles = await Role.find({
-      landlord: _id,
       isDeleted: false,
       deletedAt: null,
     });
     return res.status(200).json({ status: "SUCCESS", data: roles });
   } catch (error) {
+    next(error);
     return res.status(500).json({
       status: "FAILED",
       message: error.message,

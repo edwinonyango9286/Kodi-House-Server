@@ -7,14 +7,13 @@ const sendMail = require("../utils/sendMails");
 const { generateAccessToken } = require("../config/accessToken");
 const { generateRefreshToken } = require("../config/refreshToken");
 const crypto = require("crypto");
-const Landlord = require("../models/landlordModel");
+const User = require("../models/userModel");
 const logger = require("../utils/logger");
 const _ = require("lodash");
+const Role = require("../models/roleModel");
 
-// landlord should not delete their own account=> this function should not be provided in version 1 of the application
-
-//register a landlord
-const registerNewLandlord = asyncHandler(async (req, res) => {
+//  Register a new user
+const registerNewUser = asyncHandler(async (req, res, next) => {
   try {
     const { userName, email, password, termsAndConditionsAccepted } = req.body;
     // check for required fields
@@ -24,7 +23,7 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
         message: "Please provide all the required fields.",
       });
     }
-    // validate email using email validator
+    // validate user email
     if (!emailValidator.validate(email)) {
       return res.status(400).json({
         status: "FAILED",
@@ -32,54 +31,55 @@ const registerNewLandlord = asyncHandler(async (req, res) => {
       });
     }
     validatePassword(password);
-    // check if the landlord already exist in the database using email.
-    const landlord = await Landlord.findOne({ email });
-    if (landlord) {
+    // check if the user already exist in the database using email.
+    const user = await User.findOne({ email });
+    if (user) {
       return res.status(409).json({
         status: "FAILED",
         message:
           "An account with this email address already exists. Please use a different email address or log in to your existing account.",
       });
     }
-    const newLandlord = {
+    const newUser = {
       userName,
       email,
       password,
       termsAndConditionsAccepted,
     };
-    const activationToken = createActivationToken(newLandlord);
+    const activationToken = createActivationToken(newUser);
     const activationCode = activationToken.activationCode;
     const data = {
-      newLandlord: { userName: newLandlord?.userName },
+      newUser: { userName: newUser?.userName },
       activationCode,
     };
-
     await sendMail({
-      email: newLandlord?.email,
+      email: newUser?.email,
       subject: "Account Activation",
-      template: "landlord-activation-mail.ejs",
+      template: "account-activation-mail.ejs",
       data,
     });
     return res.status(200).json({
       success: true,
-      message: `An account activation code has been sent to ${newLandlord?.email}. Please check it.`,
+      message: `An account activation code has been sent to ${newUser?.email}. Please check it.`,
       activationToken: activationToken?.token,
     });
   } catch (error) {
     logger.error(error.message);
-    return res.status(500).json({
-      status: "FAILED",
-      message: error.message,
-    });
+    next(error);
   }
 });
 
-//create landlord activation token
-const createActivationToken = (landlord) => {
+
+
+
+
+
+//create user activation token
+const createActivationToken = (user) => {
   const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
   const token = jwt.sign(
     {
-      landlord,
+      user,
       activationCode,
     },
     process.env.ACTIVATION_SECRET,
@@ -90,7 +90,8 @@ const createActivationToken = (landlord) => {
   return { token, activationCode };
 };
 
-const activateLandlordAccount = asyncHandler(async (req, res) => {
+// General function to activate user accounts
+const activateUserAccount = asyncHandler(async (req, res, roleName) => {
   try {
     const { activationToken, activationCode } = req.body;
     if (!activationToken || !activationCode) {
@@ -99,9 +100,9 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
         message: "Please provide all the required fields.",
       });
     }
-    let newLandlord;
+    let newUser;
     try {
-      newLandlord = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
+      newUser = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
     } catch (err) {
       if (err.name === "TokenExpiredError") {
         return res
@@ -113,27 +114,38 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
         .json({ status: "FAILED", message: "Invalid activation token." });
     }
 
-    if (newLandlord.activationCode !== activationCode) {
+    if (newUser.activationCode !== activationCode) {
       return res
         .status(400)
         .json({ status: "FAILED", message: "Invalid activation code" });
     }
     const { userName, email, password, termsAndConditionsAccepted } =
-      newLandlord.landlord;
-
-    const existingLandlord = await Landlord.findOne({ email });
-    if (existingLandlord) {
+      newUser.user;
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
       return res.status(409).json({
         status: "FAILED",
         message:
           "An account with this email address already exists. Please use a different email address or log in to your existing account.",
       });
     }
-    const landlord = await Landlord.create({
+
+    // Fetch the role ObjectId based on the role name
+    const role = await Role.findOne({ name: _.startCase(_.toLower(roleName)) });
+
+    if (!role) {
+      return res.status(400).json({
+        status: "FAILED",
+        message: "Role not found.",
+      });
+    }
+
+    const user = await User.create({
       userName: _.startCase(_.toLower(userName)),
       email,
       password,
       termsAndConditionsAccepted,
+      role: role._id,
     });
 
     return res.status(201).json({
@@ -149,7 +161,16 @@ const activateLandlordAccount = asyncHandler(async (req, res) => {
   }
 });
 
-// It's the work of the admin to verify a particular landlord though the landlord is not related to the admin
+//case admin
+const activateAdminAccount = (req, res) =>
+  activateUserAccount(req, res, "Admin");
+// case landlord
+const activateLandlordAccount = (req, res) =>
+  activateUserAccount(req, res, "Landlord");
+// case tenant
+const activateTenantAccount = (req, res) =>
+  activateUserAccount(req, res, "Tenant");
+
 // for a landlord to start using his/her account the landlord should be verified
 const verifyLandlordAccount = asyncHandler(async (req, res) => {
   try {
@@ -178,80 +199,84 @@ const verifyLandlordAccount = asyncHandler(async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
+// General sign-in function
+const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
+  const { email, password } = req.body;
 
-const sigInLandlord = asyncHandler(async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
-    }
-    if (!emailValidator.validate(email)) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide a valid email address.",
-      });
-    }
-    validatePassword(password);
-    // return the user only if the user is not deleted
-    const landlord = await Landlord.findOne({
-      email: email,
-      isDeleted: false,
-      deletedAt: null,
-    }).select("+password");
-
-    if (!landlord) {
-      return res.status(403).json({
-        status: "FAILED",
-        message:
-          "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
-      });
-    }
-    if (landlord && landlord.role !== "landlord") {
-      return res
-        .status(401)
-        .json({ status: "FAILED", message: "Not authorised." });
-    }
-    if (
-      landlord &&
-      landlord.role === "landlord" &&
-      !(await landlord.isPasswordMatched(password))
-    ) {
-      return res
-        .status(403)
-        .json({ status: "FAILED", message: "Wrong email or password." });
-    }
-    const accessToken = generateAccessToken(landlord._id);
-    const refreshToken = generateRefreshToken(landlord._id);
-    landlord.refreshToken = refreshToken;
-    await landlord.save();
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      // refresh token will be removed from cookies in 7 days.
-      maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
+  // Check for required fields
+  if (!email || !password) {
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Please provide all the required fields.",
     });
-    // remove password from the landlord object
-    const landlordData = { ...landlord.toObject() };
-    delete landlordData.password;
-    delete landlordData.refreshToken;
-
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: "You've successfully signed in.",
-      data: landlordData,
-      accessToken: accessToken,
-    });
-  } catch (error) {
-    next(error);
   }
+
+  // Validate email format
+  if (!emailValidator.validate(email)) {
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Please provide a valid email address.",
+    });
+  }
+
+  // Find the user by email
+  const user = await User.findOne({
+    email,
+    isDeleted: false,
+    deletedAt: null,
+  }).select("+password");
+
+  // Check if user exists and has the expected role
+  if (!user || user.role.name !== expectedRole) {
+    return res.status(404).json({
+      status: "FAILED",
+      message: `${expectedRole} account not found or not authorized.`,
+    });
+  }
+
+  // Check password
+  if (!(await user.isPasswordMatched(password))) {
+    return res.status(401).json({
+      status: "FAILED",
+      message: "Wrong email or password.",
+    });
+  }
+
+  // Generate tokens
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  // Set refresh token in cookies
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
+  });
+
+  // Remove sensitive data
+  const userData = user.toObject();
+  delete userData.password;
+  delete userData.refreshToken;
+
+  return res.status(200).json({
+    status: "SUCCESS",
+    message: `${expectedRole} signed in successfully.`,
+    data: userData,
+    accessToken,
+  });
 });
 
+// Sign in Admin
+const signInAdmin = (req, res, next) => signInUser(req, res, next, "Admin");
+// Sign in Landlord
+const signInLandlord = (req, res, next) => signInUser(req, res, next, "Landlord");
+// Sign in Tenant
+const signInTenant = (req, res, next) => signInUser(req, res, next, "Tenant");
 // Generates new access token from refresh token for the landlord
-const refreshLandlordAccesToken = asyncHandler(async (req, res, next) => {
+const refreshUserAccessToken = asyncHandler(async (req, res, next) => {
   try {
     const { refreshToken } = req.cookies;
     if (!refreshToken) {
@@ -261,28 +286,27 @@ const refreshLandlordAccesToken = asyncHandler(async (req, res, next) => {
         message: "Session expired. Please log in to continue.",
       });
     }
-    const landlord = await Landlord.findOne({ refreshToken }).select(
-      "+refreshToken"
-    );
-    if (!landlord) {
+    const user = await User.findOne({ refreshToken }).select("+refreshToken");
+    if (!user) {
       return res
         .status(400)
         .json({ status: "FAILED", message: "Invalid refresh token." });
     }
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-    if (landlord.id !== decoded.id) {
+    if (user.id !== decoded.id) {
       return res.status(400).json({
         status: "FAILED",
         message: "Unauthorized access. Please log in to continue.",
       });
     }
-    const newAccessToken = generateAccessToken(landlord._id);
-    req.landlord = landlord;
+    const newAccessToken = generateAccessToken(user._id);
+    req.user = user;
     return newAccessToken; // Return the new access token
   } catch (error) {
     next(error);
   }
 });
+
 
 const updatePassword = asyncHandler(async (req, res, next) => {
   try {
@@ -303,33 +327,31 @@ const updatePassword = asyncHandler(async (req, res, next) => {
         message: "Password and confirm password values do not match.",
       });
     }
-    const landlord = await Landlord.findById(req.landlord._id).select(
-      "+password"
-    );
+    const user = await User.findById(req.user._id).select("+password");
 
-    if (!landlord) {
+    if (!user) {
       return res.status(404).json({
         status: "FAILED",
-        message: "Landlord not found.",
+        message: "User not found.",
       });
     }
     // check if the current password is the same as the stored password
-    if (!(await landlord.isPasswordMatched(currentPassword))) {
+    if (!(await user.isPasswordMatched(currentPassword))) {
       return res
         .status(400)
         .json({ status: "FAILED", message: "Current password is incorrect." });
     }
 
     // check if the new passwors is the same as the stored password
-    if (await landlord.isPasswordMatched(newPassword)) {
+    if (await user.isPasswordMatched(newPassword)) {
       return res.status(400).json({
         status: "FAILED",
         message:
           "Please choose a new password that is different from the old password.",
       });
     }
-    landlord.password = newPassword;
-    await landlord.save();
+    user.password = newPassword;
+    await user.save();
 
     return res.status(200).json({
       status: "SUCCESS",
@@ -351,33 +373,31 @@ const passwordResetToken = asyncHandler(async (req, res) => {
         message: "Please provide your email address.",
       });
     }
-
     if (!emailValidator.validate(email)) {
       return res
         .status(400)
         .json({ message: "Please provide a valid email address." });
     }
-
-    const landlord = await Landlord.findOne({ email });
-    if (!landlord) {
+    const user = await User.findOne({ email });
+    if (!user) {
       return res.status(404).json({
         status: "FAILED",
         message:
           "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
       });
     }
-    const token = await landlord.createPasswordResetToken();
-    await landlord.save();
-    const data = { landlord: { userName: landlord.userName }, token };
+    const token = await User.createPasswordResetToken();
+    await user.save();
+    const data = { user: { userName: user.userName }, token };
     await sendMail({
-      email: landlord.email,
+      email: user.email,
       subject: "Password Reset Link",
-      template: "landlord-reset-password-token-mail.ejs",
+      template: "reset-password-token-mail.ejs",
       data,
     });
     return res.status(200).json({
       status: "SUCCESS",
-      message: `A password reset link has been sent to ${landlord.email}. Please check your email inbox and follow the instructions to reset your password.`,
+      message: `A password reset link has been sent to ${user.email}. Please check your email inbox and follow the instructions to reset your password.`,
     });
   } catch (error) {
     return res.status(500).json({
@@ -407,27 +427,27 @@ const resetPassword = asyncHandler(async (req, res, next) => {
     const { token } = req.params;
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
-    const landlord = await Landlord.findOne({
+    const user = await User.findOne({
       passwordResetToken: hashedToken,
       passwordResetExpires: { $gt: Date.now() },
     }).select("+password");
-    if (!landlord) {
+    if (!user) {
       return res.status(400).json({
         status: "FAILED",
         message: "Invalid password reset token.",
       });
     }
-    if (await landlord.isPasswordMatched(password)) {
+    if (await user.isPasswordMatched(password)) {
       return res.status(400).json({
         status: "FAILED",
         message:
           "Please choose a new password that is different from the old one.",
       });
     }
-    landlord.password = password;
-    landlord.passwordResetToken = undefined;
-    landlord.passwordResetExpires = undefined;
-    await landlord.save();
+    user.password = password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
     return res.json({
       status: "SUCCESS",
       message:
@@ -448,10 +468,8 @@ const logout = asyncHandler(async (req, res) => {
       });
     }
     const refreshToken = cookie.refreshToken;
-    const landlord = await Landlord.findOne({ refreshToken }).select(
-      "+refreshToken"
-    );
-    if (!landlord) {
+    const user = await User.findOne({ refreshToken }).select("+refreshToken");
+    if (!user) {
       res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -462,7 +480,7 @@ const logout = asyncHandler(async (req, res) => {
         message: "You have successfully logged out.",
       });
     }
-    await Landlord.findOneAndUpdate(
+    await User.findOneAndUpdate(
       { refreshToken },
       {
         refreshToken: null,
@@ -488,13 +506,17 @@ const logout = asyncHandler(async (req, res) => {
 // so far so good => any error to be reported asap.
 
 module.exports = {
-  registerNewLandlord,
+  registerNewUser,
+  activateAdminAccount,
+  activateTenantAccount,
   activateLandlordAccount,
-  sigInLandlord,
+  refreshUserAccessToken,
+  signInAdmin,
+  signInTenant,
+  signInLandlord,
   updatePassword,
   passwordResetToken,
   resetPassword,
-  refreshLandlordAccesToken,
   verifyLandlordAccount,
   logout,
 };
