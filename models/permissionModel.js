@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const roleSchema = new mongoose.Schema(
+const permissionSchema = new mongoose.Schema(
   {
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -8,7 +8,7 @@ const roleSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: (id) => {
-          return id === null || mongoose.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props} is not a valid object id.`,
       },
@@ -16,32 +16,23 @@ const roleSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      trim: true,
+      minLength: 2,
+      maxLenght: 50,
     },
     description: {
       type: String,
       required: true,
-    },
-    permissions: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Permission",
-        validate: {
-          validator: (id) => {
-            return mongoose.Types.ObjectId.isValid(id);
-          },
-          message: (props) => `${props} is not a valid object id `,
-        },
-      },
-    ],
-    slug: {
-      type: String,
-      required: true,
+      maxLength: 2000,
+      minLength: 2,
     },
     status: {
       type: String,
       required: true,
       enum: ["Active", "Disabled"],
+    },
+    slug: {
+      type: String,
+      required: true,
     },
     isDeleted: {
       type: Boolean,
@@ -49,7 +40,7 @@ const roleSchema = new mongoose.Schema(
     },
     deletedAt: {
       type: Date,
-      default: null,
+      default: Date.now,
     },
   },
   {
@@ -57,4 +48,4 @@ const roleSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Role", roleSchema);
+module.exports = mongoose.model("Permission", permissionSchema);
