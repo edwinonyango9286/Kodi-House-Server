@@ -4,12 +4,13 @@ const validateMongoDbId = require("../utils/validateMongoDbId");
 const _ = require("lodash");
 const { descriptionFormater } = require("../utils/stringFormaters");
 const logger = require("../utils/logger");
+const slugify = require("slugify");
 
 // Both admins and landlords can add roles
-const addARole = expressAsyncHandler(async (req, res, next) => {
+const createARole = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { name, description } = req.body;
-    if (!name || !description) {
+    const { name, description, status } = req.body;
+    if (!name || !description || !status) {
       return res.status(400).json({
         status: "FAILED",
         message: "Please provide all the required fields.",
@@ -21,26 +22,16 @@ const addARole = expressAsyncHandler(async (req, res, next) => {
     });
     // if the role already exist and isDeleted is true then update the role
     if (existingRole) {
-      if (existingRole.isDeleted) {
-        (existingRole.isDeleted = false),
-          (existingRole.deletedAt = null),
-          (existingRole.description = descriptionFormater(description));
-        await existingRole.save();
-        return res.status(201).json({
-          status: "SUCCESS",
-          message: "Role created successfully.",
-          data: existingRole,
-        });
-      } else {
-        return res
-          .status(400)
-          .json({ status: "FAILED", message: "Role already exist." });
-      }
+      return res
+        .status(400)
+        .json({ status: "FAILED", message: "Role already exist." });
     }
     const createdRole = await Role.create({
       ...req.body,
       name: _.startCase(_.toLower(name)),
       description: descriptionFormater(description),
+      slug: slugify(name),
+      createdBy: req.user._id,
     });
     if (createdRole) {
       return res.status(201).json({
@@ -65,7 +56,9 @@ const getARole = expressAsyncHandler(async (req, res, next) => {
       _id: roleId,
       isDeleted: false,
       deletedAt: null,
-    });
+    })
+      .populate({ path: "createdBy", select: "userName" })
+      .populate({ path: "permissions", select: "name" });
     if (!role) {
       return res
         .status(404)
@@ -82,9 +75,8 @@ const updateARole = expressAsyncHandler(async (req, res) => {
   try {
     const { roleId } = req.params;
     validateMongoDbId(roleId);
-
-    const { name, description } = req.body;
-    if (!name || !description) {
+    const { name, description, status } = req.body;
+    if (!name || !description || !status) {
       return res.status(404).json({
         status: "FAILED",
         message: "Please provide all the required fields.",
@@ -124,15 +116,15 @@ const getAllRoles = expressAsyncHandler(async (req, res, next) => {
     const roles = await Role.find({
       isDeleted: false,
       deletedAt: null,
-    });
+    })
+      .populate({ path: "createdBy", select: "userName" })
+      .populate({ path: "permissions", select: "name" });
     return res.status(200).json({ status: "SUCCESS", data: roles });
   } catch (error) {
     logger.error(error.message);
     next(error);
   }
 });
-
-
 
 const deleteARole = expressAsyncHandler(async (req, res, next) => {
   try {
@@ -164,10 +156,8 @@ const deleteARole = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-
-
 module.exports = {
-  addARole,
+  createARole,
   updateARole,
   getAllRoles,
   getARole,

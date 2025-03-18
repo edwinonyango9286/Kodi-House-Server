@@ -31,8 +31,8 @@ const verifyUserToken = expressAsyncHandler(async (req, res, next) => {
     ) {
       try {
         const newAccessToken = await refreshUserAccessToken(req, res);
-        req.headers.authorization = `Bearer ${newAccessToken}`; 
-        next(); 
+        req.headers.authorization = `Bearer ${newAccessToken}`;
+        next();
       } catch (err) {
         return res.status(403).json({
           status: "FAILED",
@@ -59,7 +59,6 @@ const checkUserRole = (roles) => {
     }
     const userRole = user.role.name;
     const hasRole = roles.includes(userRole);
-
     if (!hasRole) {
       return res
         .status(403)
@@ -69,7 +68,43 @@ const checkUserRole = (roles) => {
   });
 };
 
+const checkUserPermission = (permission) => {
+  return expressAsyncHandler(async (req, res, next) => {
+    const { email } = req.user;
+    const user = await User.findOne({ email })
+    .populate({
+      path: 'role',
+      populate: {
+        path: 'permissions',
+        model: 'Permission', 
+      },
+    });
+
+    console.log(user)
+
+    if (!user) {
+      return res.status(404).json({
+        status: "FAILED",
+        message:
+          "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
+      });
+    }
+    const userPermissions = user.role.permissions.map(
+      (permission) => permission.name
+    );
+    if (!userPermissions.includes(permission)) {
+      return res.status(403).json({
+        status: "FAILED",
+        message: "Not authorized.",
+      });
+    }
+
+    next();
+  });
+};
+
 module.exports = {
   verifyUserToken,
   checkUserRole,
+  checkUserPermission,
 };
