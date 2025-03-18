@@ -5,9 +5,9 @@ const _ = require("lodash");
 const { descriptionFormater } = require("../utils/stringFormaters");
 const logger = require("../utils/logger");
 
+// Both admins and landlords can add roles
 const addARole = expressAsyncHandler(async (req, res, next) => {
   try {
-    // Its only the admin that will be able to add a role=> if a role is needed and it missing
     const { name, description } = req.body;
     if (!name || !description) {
       return res.status(400).json({
@@ -55,17 +55,14 @@ const addARole = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-// get a single role => by landlord if the role is not deleted
-const getARole = expressAsyncHandler(async (req, res) => {
+// All the admins and landlords can add roles
+const getARole = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { _id } = req.landlord;
     const { roleId } = req.params;
-    validateMongoDbId(_id);
     validateMongoDbId(roleId);
     // find a role related to that particular landlord => only get the role if it is not deleted
     const role = await Role.findOne({
       _id: roleId,
-      landlord: _id,
       isDeleted: false,
       deletedAt: null,
     });
@@ -74,31 +71,32 @@ const getARole = expressAsyncHandler(async (req, res) => {
         .status(404)
         .json({ status: "FAILED", message: "Role not found." });
     }
-    return res.status(200).json({ status: "SUCCESS", role });
+    return res.status(200).json({ status: "SUCCESS", data: role });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    next(error);
   }
 });
 
 // update a role
 const updateARole = expressAsyncHandler(async (req, res) => {
   try {
-    const { _id } = req.landlord;
     const { roleId } = req.params;
-    validateMongoDbId(_id);
     validateMongoDbId(roleId);
 
-    console.log(_id, roleId);
-    const { name } = req.body;
-    if (!name) {
+    const { name, description } = req.body;
+    if (!name || !description) {
       return res.status(404).json({
         status: "FAILED",
         message: "Please provide all the required fields.",
       });
     }
     const updatedRole = await Role.findOneAndUpdate(
-      { _id: roleId, landlord: _id },
-      { ...req.body, name: _.startCase(_.toLower(name)) },
+      { _id: roleId },
+      {
+        ...req.body,
+        name: _.startCase(_.toLower(name)),
+        description: descriptionFormater(description),
+      },
       {
         new: true,
         runValidators: true,
@@ -116,33 +114,27 @@ const updateARole = expressAsyncHandler(async (req, res) => {
       updatedRole,
     });
   } catch (error) {
-    return res.status(500).json({
-      status: "FAILED",
-      message: error.message,
-    });
+    logger.error();
+    next(error);
   }
 });
 
-// only admins should be able to view all the roles
 const getAllRoles = expressAsyncHandler(async (req, res, next) => {
   try {
-    // const { _id } = req.landlord;
-    // validateMongoDbId(_id);
     const roles = await Role.find({
       isDeleted: false,
       deletedAt: null,
     });
     return res.status(200).json({ status: "SUCCESS", data: roles });
   } catch (error) {
+    logger.error(error.message);
     next(error);
-    return res.status(500).json({
-      status: "FAILED",
-      message: error.message,
-    });
   }
 });
 
-const deleteARole = expressAsyncHandler(async (req, res) => {
+
+
+const deleteARole = expressAsyncHandler(async (req, res, next) => {
   try {
     const { roleId } = req.params;
     validateMongoDbId(roleId);
@@ -154,10 +146,8 @@ const deleteARole = expressAsyncHandler(async (req, res) => {
         deletedAt: null,
       },
       { isDeleted: true, deletedAt: Date.now() },
-
       { new: true, runValidators: true }
     );
-
     if (!deletedRole) {
       return res
         .status(404)
@@ -169,9 +159,12 @@ const deleteARole = expressAsyncHandler(async (req, res) => {
       data: deletedRole,
     });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    logger.error(error.message);
+    next();
   }
 });
+
+
 
 module.exports = {
   addARole,
