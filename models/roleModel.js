@@ -2,20 +2,9 @@ const mongoose = require("mongoose");
 
 const roleSchema = new mongoose.Schema(
   {
-    addedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      validate: {
-        validator: (id) => {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props} is not a valid object id.`,
-      },
-    },
     name: {
       type: String,
       required: true,
-      trim: true,
     },
     description: {
       type: String,
@@ -23,16 +12,10 @@ const roleSchema = new mongoose.Schema(
     },
     permissions: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Permission",
-        validate: {
-          validator: (id) => {
-            return mongoose.Types.ObjectId.isValid(id);
-          },
-          message: (props) => `${props} is not a valid object id `,
-        },
+        type: String,
       },
     ],
+
     isDeleted: {
       type: Boolean,
       default: false,

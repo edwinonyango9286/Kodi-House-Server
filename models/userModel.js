@@ -121,7 +121,6 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
-    // a single user will have a single role at a time
     role: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Role",

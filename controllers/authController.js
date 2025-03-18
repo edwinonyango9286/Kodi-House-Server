@@ -12,22 +12,6 @@ const logger = require("../utils/logger");
 const _ = require("lodash");
 const Role = require("../models/roleModel");
 
-//create user activation token
-const createActivationToken = (user) => {
-  const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
-  const token = jwt.sign(
-    {
-      user,
-      activationCode,
-    },
-    process.env.ACTIVATION_SECRET,
-    {
-      expiresIn: "5min",
-    }
-  );
-  return { token, activationCode };
-};
-
 //  Register a new user
 const registerNewUser = asyncHandler(async (req, res, next) => {
   try {
@@ -85,8 +69,29 @@ const registerNewUser = asyncHandler(async (req, res, next) => {
   }
 });
 
+
+
+
+
+
+//create user activation token
+const createActivationToken = (user) => {
+  const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
+  const token = jwt.sign(
+    {
+      user,
+      activationCode,
+    },
+    process.env.ACTIVATION_SECRET,
+    {
+      expiresIn: "5min",
+    }
+  );
+  return { token, activationCode };
+};
+
 // General function to activate user accounts
-const activateUserAccount = asyncHandler(async (req, res, next, roleName) => {
+const activateUserAccount = asyncHandler(async (req, res, roleName) => {
   try {
     const { activationToken, activationCode } = req.body;
     if (!activationToken || !activationCode) {
@@ -127,7 +132,6 @@ const activateUserAccount = asyncHandler(async (req, res, next, roleName) => {
 
     // Fetch the role ObjectId based on the role name
     const role = await Role.findOne({ name: _.startCase(_.toLower(roleName)) });
-    console.log();
 
     if (!role) {
       return res.status(400).json({
@@ -150,20 +154,22 @@ const activateUserAccount = asyncHandler(async (req, res, next, roleName) => {
         "Your account has been successfully activated. Please proceed to log in.",
     });
   } catch (error) {
-    logger.error(error.message);
-    next(error);
+    return res.status(500).json({
+      status: "FAILED",
+      message: error.message,
+    });
   }
 });
 
 //case admin
-const activateAdminAccount = (req, res, next) =>
-  activateUserAccount(req, res, next, "Admin");
+const activateAdminAccount = (req, res) =>
+  activateUserAccount(req, res, "Admin");
 // case landlord
-const activateLandlordAccount = (req, res, next) =>
-  activateUserAccount(req, res, next, "Landlord");
+const activateLandlordAccount = (req, res) =>
+  activateUserAccount(req, res, "Landlord");
 // case tenant
-const activateTenantAccount = (req, res, next) =>
-  activateUserAccount(req, res, next, "Tenant");
+const activateTenantAccount = (req, res) =>
+  activateUserAccount(req, res, "Tenant");
 
 // for a landlord to start using his/her account the landlord should be verified
 const verifyLandlordAccount = asyncHandler(async (req, res) => {
@@ -193,90 +199,80 @@ const verifyLandlordAccount = asyncHandler(async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
-
 // General sign-in function
 const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    // Check for required fields
-    if (!email || !password) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
-    }
-
-    // Validate email format
-    if (!emailValidator.validate(email)) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide a valid email address.",
-      });
-    }
-
-    // Find the user by email => also ensure that user whose accounts are not deleted are the only ones who can log in
-    const user = await User.findOne({
-      email,
-      isDeleted: false,
-      deletedAt: null,
-    })
-      .select("+password")
-      .populate({ path: "role", select: "name" });
-
-    console.log(user);
-
-    // Check if user exists and has the expected role
-    if (!user || user.role.name !== expectedRole) {
-      return res.status(404).json({
-        status: "FAILED",
-        message: `${expectedRole} account not found or not authorized.`,
-      });
-    }
-
-    // Check password
-    if (!(await user.isPasswordMatched(password))) {
-      return res.status(401).json({
-        status: "FAILED",
-        message: "Wrong email or password.",
-      });
-    }
-
-    // Generate tokens
-    const accessToken = generateAccessToken(user._id);
-    const refreshToken = generateRefreshToken(user._id);
-    user.refreshToken = refreshToken;
-    await user.save();
-
-    // Set refresh token in cookies
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
+  // Check for required fields
+  if (!email || !password) {
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Please provide all the required fields.",
     });
-
-    // Remove sensitive data
-    const userData = user.toObject();
-    delete userData.password;
-    delete userData.refreshToken;
-
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: `${expectedRole} signed in successfully.`,
-      data: userData,
-      accessToken,
-    });
-  } catch (error) {
-    next(error);
   }
+
+  // Validate email format
+  if (!emailValidator.validate(email)) {
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Please provide a valid email address.",
+    });
+  }
+
+  // Find the user by email
+  const user = await User.findOne({
+    email,
+    isDeleted: false,
+    deletedAt: null,
+  }).select("+password");
+
+  // Check if user exists and has the expected role
+  if (!user || user.role.name !== expectedRole) {
+    return res.status(404).json({
+      status: "FAILED",
+      message: `${expectedRole} account not found or not authorized.`,
+    });
+  }
+
+  // Check password
+  if (!(await user.isPasswordMatched(password))) {
+    return res.status(401).json({
+      status: "FAILED",
+      message: "Wrong email or password.",
+    });
+  }
+
+  // Generate tokens
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  // Set refresh token in cookies
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
+  });
+
+  // Remove sensitive data
+  const userData = user.toObject();
+  delete userData.password;
+  delete userData.refreshToken;
+
+  return res.status(200).json({
+    status: "SUCCESS",
+    message: `${expectedRole} signed in successfully.`,
+    data: userData,
+    accessToken,
+  });
 });
 
 // Sign in Admin
 const signInAdmin = (req, res, next) => signInUser(req, res, next, "Admin");
 // Sign in Landlord
-const signInLandlord = (req, res, next) =>
-  signInUser(req, res, next, "Landlord");
+const signInLandlord = (req, res, next) => signInUser(req, res, next, "Landlord");
 // Sign in Tenant
 const signInTenant = (req, res, next) => signInUser(req, res, next, "Tenant");
 // Generates new access token from refresh token for the landlord
