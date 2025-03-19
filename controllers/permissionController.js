@@ -5,6 +5,7 @@ const { descriptionFormater } = require("../utils/stringFormaters");
 const logger = require("../utils/logger");
 const slugify = require("slugify");
 const validateMongoDbId = require("../utils/validateMongoDbId");
+const Role = require("../models/roleModel");
 
 const createAPermission = expressAsyncHandler(async (req, res, next) => {
   try {
@@ -15,7 +16,6 @@ const createAPermission = expressAsyncHandler(async (req, res, next) => {
         message: "Please provide all the required fields.",
       });
     }
-
     // check if a permission with a similar name already exist
     const existingPermission = await Permission.findOne({ name });
     if (existingPermission) {
@@ -24,13 +24,13 @@ const createAPermission = expressAsyncHandler(async (req, res, next) => {
         message: `${existingPermission.name} permission already exist.`,
       });
     }
-
     const createdPermission = await Permission.create({
       ...req.body,
       createdBy: req.user._id,
       description: descriptionFormater(description),
       slug: slugify(name),
     });
+
     return res.status(201).json({
       status: "SUCCESS",
       message: "Permission created successfully.",
@@ -146,6 +146,7 @@ const deleteAPermission = expressAsyncHandler(async (req, res, next) => {
     next(error);
   }
 });
+
 
 const restoreADeletedPermission = expressAsyncHandler(
   async (req, res, next) => {

@@ -46,6 +46,46 @@ const createARole = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
+const grantPermissionToARole = expressAsyncHandler(async (req, res, next) => {
+  try {
+    const { roleId } = req.params;
+    const { permissionId } = req.body;
+
+    console.log(roleId)
+    validateMongoDbId(roleId);
+
+    if (!permissionId) {
+      return res
+        .status(400)
+        .json({ status: "FAILED", message: "Please provide permission Id." });
+    }
+    validateMongoDbId(permissionId);
+
+ 
+    const grantedRole = await Role.findOneAndUpdate(
+      {
+        _id: roleId,
+      },
+      {
+        $addToSet: { permissions: permissionId },
+      },
+      { new: true, runValidators: true }
+    );
+    if (!grantedRole) {
+      return res
+        .status(400)
+        .json({ status: "FAILED", message: "Role not found." });
+    }
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: `Permission granted to ${grantedRole.name} sucessfully.`,
+      data: grantedRole,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // All the admins and landlords can add roles
 const getARole = expressAsyncHandler(async (req, res, next) => {
   try {
@@ -162,4 +202,5 @@ module.exports = {
   getAllRoles,
   getARole,
   deleteARole,
+  grantPermissionToARole,
 };
