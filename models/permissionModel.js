@@ -13,6 +13,17 @@ const permissionSchema = new mongoose.Schema(
         message: (props) => `${props} is not a valid object id.`,
       },
     },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props} is not a valid object id`,
+      },
+    },
+
     name: {
       type: String,
       required: true,
@@ -40,7 +51,7 @@ const permissionSchema = new mongoose.Schema(
     },
     deletedAt: {
       type: Date,
-      default: Date.now,
+      default: null,
     },
   },
   {

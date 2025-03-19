@@ -8,7 +8,7 @@ const roleSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: (id) => {
-          return id === null || mongoose.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props} is not a valid object id.`,
       },
