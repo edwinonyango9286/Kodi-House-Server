@@ -9,6 +9,30 @@ const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const cors = require("cors");
 
+const swaggerJsDoc = require("swagger-jsdoc");
+const swaggerUi = require("swagger-ui-express");
+
+// swagger definition
+
+const swaggerOptions = {
+  swaggerDefinition: {
+    openapi: "3.1.0",
+    info: {
+      title: "Kodi House",
+      version: "1.0.0",
+      description: "Api documentation for Kodi House",
+    },
+    server: [
+      {
+        url: `http://localhost:${process.env.PORT || 4000}`,
+      },
+    ],
+  },
+  apis: ["./routes/*js"],
+};
+
+const swaggerDocs = swaggerJsDoc(swaggerOptions);
+
 // routers
 const applicationRouter = require("./routes/applicationRoutes");
 const roleRouter = require("./routes/roleRoutes");
@@ -27,6 +51,7 @@ app.use(express.json({ limit: "50mb" }));
 const origins = [
   process.env.ORIGIN_LOCALHOST_3000,
   process.env.ORIGIN_LOCALHOST_3001,
+  process.env.ORIGIN_LOCALHOST_4000,
   process.env.KODI_HOUSE_LANDLORDAPP_PRODUCTION_URL,
 ];
 
@@ -63,16 +88,17 @@ app.use(bodyParser.urlencoded({ limit: "5mb", extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/application", applicationRouter);
-app.use("/api/v1/role", roleRouter);
-app.use("/api/v1/landlord", landlordRouter);
-app.use("/api/v1/tenant", tenantRouter);
-app.use("/api/v1/property", propertyRouter);
-app.use("/api/v1/invoice", invoiceRouter);
-app.use("/api/v1/unit", unitRouter);
-app.use("/api/v1/propertyCategory", propertyCategoryRouter);
-app.use("/api/v1/unitCategory", unitCategoryRouter);
-app.use("/api/v1/permission", permissionRouter);
+app.use("/api/v1/applications", applicationRouter);
+app.use("/api/v1/roles", roleRouter);
+app.use("/api/v1/landlords", landlordRouter);
+app.use("/api/v1/tenants", tenantRouter);
+app.use("/api/v1/properties", propertyRouter);
+app.use("/api/v1/invoices", invoiceRouter);
+app.use("/api/v1/units", unitRouter);
+app.use("/api/v1/propertyCategories", propertyCategoryRouter);
+app.use("/api/v1/unitCategories", unitCategoryRouter);
+app.use("/api/v1/permissions", permissionRouter);
 
 module.exports = app;

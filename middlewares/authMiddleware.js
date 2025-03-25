@@ -71,17 +71,13 @@ const checkUserRole = (roles) => {
 const checkUserPermission = (permission) => {
   return expressAsyncHandler(async (req, res, next) => {
     const { email } = req.user;
-    const user = await User.findOne({ email })
-    .populate({
-      path: 'role',
+    const user = await User.findOne({ email }).populate({
+      path: "role",
       populate: {
-        path: 'permissions',
-        model: 'Permission', 
+        path: "permissions",
+        model: "Permission",
       },
     });
-
-    console.log(user)
-
     if (!user) {
       return res.status(404).json({
         status: "FAILED",
@@ -98,10 +94,12 @@ const checkUserPermission = (permission) => {
         message: "Not authorized.",
       });
     }
-
     next();
   });
 };
+
+
+
 
 module.exports = {
   verifyUserToken,

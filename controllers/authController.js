@@ -127,10 +127,9 @@ const activateUserAccount = asyncHandler(async (req, res, next, roleName) => {
 
     // Fetch the role ObjectId based on the role name
     const role = await Role.findOne({ name: _.startCase(_.toLower(roleName)) });
-    console.log();
 
     if (!role) {
-      return res.status(400).json({
+      return res.status(404).json({
         status: "FAILED",
         message: "Role not found.",
       });
@@ -170,7 +169,7 @@ const verifyLandlordAccount = asyncHandler(async (req, res) => {
   try {
     const { landlordId } = req.params;
     validateMongoDbId(landlordId);
-    const verifiedLandlord = await Landlord.findOneAndUpdate(
+    const verifiedLandlord = await User.findOneAndUpdate(
       {
         _id: landlordId,
       },
@@ -310,7 +309,6 @@ const refreshUserAccessToken = asyncHandler(async (req, res, next) => {
     next(error);
   }
 });
-
 
 const updatePassword = asyncHandler(async (req, res, next) => {
   try {
