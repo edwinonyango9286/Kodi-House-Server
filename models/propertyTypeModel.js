@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const propertyTagSchema = new mongoose.Schema(
+const propertyTypeSchema = new mongoose.Schema(
   {
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -10,10 +10,9 @@ const propertyTagSchema = new mongoose.Schema(
         validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
         },
-        message: (props) => `${props} is not a valid object id.`,
+        message: (props) => `${props} is not a valid objectId`,
       },
     },
-
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -21,24 +20,29 @@ const propertyTagSchema = new mongoose.Schema(
         validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
         },
-        message: (props) => `${props} is not a valid object id.`,
+        message: (props) => `${props} is not a valid objectId`,
       },
-    },
-
-    name: {
-      type: String,
-      required: true,
-    },
-
-    description: {
-      type: String,
-      required: true,
-      maxlength: 2000,
-      minlength: 2,
     },
     slug: {
       type: String,
       required: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      minlength: 2,
+      maxlength: 50,
+    },
+    description: {
+      type: String,
+      required: true,
+      minlength: 2,
+      maxlength: 2000,
+    },
+    status: {
+      type: String,
+      required: true,
+      enum: ["Active", "Disabled"],
     },
     isDeleted: {
       type: Boolean,
@@ -55,18 +59,11 @@ const propertyTagSchema = new mongoose.Schema(
         validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
         },
-        message: (props) => `${props} is not a valid object id.`,
+        message: (props) => `${props} is not a valid object id`,
       },
     },
-    status: {
-      type: String,
-      required: true,
-      enum: ["Active", "Disabled"],
-    },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-module.exports = mongoose.model("PropertyTag", propertyTagSchema);
+module.exports = mongoose.model("PropertyType", propertyTypeSchema);

@@ -45,6 +45,8 @@ const unitRouter = require("./routes/unitRoute");
 const propertyCategoryRouter = require("./routes/propertyCategoryRoutes");
 const unitCategoryRouter = require("./routes/unitCategoryRoute");
 const permissionRouter = require("./routes/permissionRoutes");
+const propertyTypeRouter = require("./routes/propertyTypeRoutes");
+const propertyTagRouter = require("./routes/propertyTagRoutes");
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -97,8 +99,10 @@ app.use("/api/v1/tenants", tenantRouter);
 app.use("/api/v1/properties", propertyRouter);
 app.use("/api/v1/invoices", invoiceRouter);
 app.use("/api/v1/units", unitRouter);
-app.use("/api/v1/propertyCategories", propertyCategoryRouter);
-app.use("/api/v1/unitCategories", unitCategoryRouter);
+app.use("/api/v1/property-categories", propertyCategoryRouter);
+app.use("/api/v1/unit-categories", unitCategoryRouter);
 app.use("/api/v1/permissions", permissionRouter);
+app.use("/api/v1/property-types", propertyTypeRouter);
+app.use("/api/v1/property-tags", propertyTagRouter);
 
 module.exports = app;

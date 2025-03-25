@@ -2,9 +2,21 @@ const mongoose = require("mongoose");
 
 const propertySchema = new mongoose.Schema(
   {
-    landlord: {
+    owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Landlord",
+      required: true,
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
+
+    type: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PropertyType",
       required: true,
       validate: {
         validator: function (id) {
@@ -57,12 +69,6 @@ const propertySchema = new mongoose.Schema(
         },
       },
     ],
-    type: {
-      type: String,
-      enum: ["Single Unit", "Multi Unit"],
-      required: true,
-    },
-
     // total number of units
     numberOfUnits: {
       type: Number,
@@ -228,6 +234,16 @@ const propertySchema = new mongoose.Schema(
     deletedAt: {
       type: Date,
       default: null,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props} is not a valid object id`,
+      },
     },
   },
   {

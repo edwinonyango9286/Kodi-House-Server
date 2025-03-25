@@ -8,7 +8,7 @@ const { descriptionFormater } = require("../utils/stringFormaters");
 // add a new property
 const addAProperty = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { _id } = req.landlord;
+    const { _id } = req.user;
     validateMongoDbId(_id);
     const {
       name,
@@ -41,32 +41,24 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
     }
     // check for existing property by name
     const existingProperty = await Property.findOne({
-      landlord: _id,
+      owner: _id,
       name: _.startCase(_.toLower(name)),
+      isDeleted: false,
+      deletedAt: null,
     });
     if (existingProperty) {
-      // if property exists and has been deleted restore the property
-      if (existingProperty.isDeleted) {
-        (existingProperty.isDeleted = false),
-          (existingProperty.deletedAt = null),
-          await existingProperty.save();
-        return res.status(201).json({
-          status: "SUCCESS",
-          message: "Property created successfully.",
-          data: existingProperty,
-        });
-      } else {
-        return res.status(400).json({
+      return res
+        .status(409)
+        .json({
           status: "FAILED",
-          message: "A property with a simillar name already exist.",
+          message: `Property ${existingProperty.name} already exist.`,
         });
-      }
     }
     const newProperty = await Property.create({
       ...req.body,
       name: _.startCase(_.toLower(name)),
       briefDescription: descriptionFormater(briefDescription),
-      landlord: _id,
+      owner: _id,
     });
     return res.status(201).json({
       status: "SUCCESS",
@@ -81,7 +73,7 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
 // update a property
 const updateAproperty = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { _id } = req.landlord;
+    const { _id } = req.user;
     const { propertyId } = req.params;
     validateMongoDbId(_id);
     validateMongoDbId(propertyId);
@@ -118,22 +110,20 @@ const updateAproperty = expressAsyncHandler(async (req, res, next) => {
     const updatedProperty = await Property.findOneAndUpdate(
       {
         _id: propertyId,
-        landlord: _id,
+        owner: _id,
       },
       {
         ...req.body,
         name: _.startCase(_.toLower(name)),
         briefDescription: descriptionFormater(briefDescription),
       },
-      { new: true }
+      { new: true, runValidators: true }
     );
-
     if (!updatedProperty) {
       return res
         .status(404)
         .json({ status: "FAILED", message: "Property not found." });
     }
-
     return res.status(200).json({ status: "SUCCESS", data: updatedProperty });
   } catch (error) {
     next(error);
@@ -144,7 +134,6 @@ const getApropertyById = expressAsyncHandler(async (req, res, next) => {
   try {
     const { propertyId } = req.params;
     validateMongoDbId(propertyId);
-
     // Build the query object
     const query = {
       _id: propertyId,
@@ -152,13 +141,14 @@ const getApropertyById = expressAsyncHandler(async (req, res, next) => {
       deletedAt: null,
     };
 
-    // If the request is from a landlord, add the landlord check
-    if (req.landlord && req.landlord._id) {
-      query.landlord = req.landlord._id;
+    // If the request is from a owner, add the owner check
+    if (req.user && req.user._id) {
+      query.owner = req.user._id;
     }
 
     const property = await Property.findOne(query)
-      .populate({ path: "landlord", select: "userName" })
+      .populate({ path: "owner", select: "userName" })
+      .populate({ path: "type", select: "name" })
       .populate({ path: "category", select: "name" })
       .populate({ path: "currentOccupant", select: "firstName secondName" })
       .populate({ path: "users", select: "firstName secondName" });
@@ -189,8 +179,8 @@ const getAllProperties = expressAsyncHandler(async (req, res, next) => {
     );
 
     // check if the request is from a landlord then filter with landlord id
-    if (req.landlord && req.landlord._id) {
-      queryObject.landlord = req.landlord._id;
+    if (req.user && req.user._id) {
+      queryObject.owner = req.user._id;
     }
 
     let query = Property.find({
@@ -198,9 +188,10 @@ const getAllProperties = expressAsyncHandler(async (req, res, next) => {
       isDeleted: false,
       deletedAt: null,
     }) //populate for landlord
-      .populate({ path: "landlord", select: "userName" })
+      .populate({ path: "owner", select: "userName" })
       .populate({ path: "currentOccupant", select: "firstName secondName" })
       .populate({ path: "users", select: "firstName secondName" })
+      .populate({ path: "type", select: "name" })
       .populate({ path: "category", select: "name" });
 
     // sorting
@@ -240,7 +231,7 @@ const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
     validateMongoDbId(tenantId);
     const tenant = await Tenant.findOne({
       _id: tenantId,
-      landlord: req.landlord._id,
+      owner: req.user._id,
       isDeleted: false,
       deletedAt: null,
     });
@@ -265,7 +256,7 @@ const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
     }
 
     // ensures that only properties that are single unit are asigned to a single tenant.
-    if (property.type === "Multi Unit") {
+    if (property.type.name === "Multi Unit") {
       return res.status(400).json({
         status: "FAILED",
         message: "A multi unit property cannot be assigned to a single tenant",
@@ -309,7 +300,7 @@ const vacateATenantFromAProperty = expressAsyncHandler(
       // find property
       const property = await Property.findOne({
         _id: propertyId,
-        landlord: req.landlord._id,
+        owner: req.user._id,
         isDeleted: false,
         deletedAt: null,
       });
@@ -322,7 +313,7 @@ const vacateATenantFromAProperty = expressAsyncHandler(
       // find tenant
       const tenant = await Tenant.findOne({
         _id: property.currentOccupant,
-        landlord: req.landlord._id,
+        owner: req.user._id,
         properties: { $in: [propertyId] },
       });
       // remove property id from
@@ -353,7 +344,7 @@ const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
     const deletedProperty = await Property.findOneAndUpdate(
       {
         _id: propertyId,
-        landlord: req.landlord._id,
+        owner: req.user._id,
         isDeleted: false,
         deletedAt: null,
       },
@@ -369,7 +360,7 @@ const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
     return res.status(200).json({
       status: "SUCCESS",
       data: deletedProperty,
-      message: "Property updated successfully.",
+      message: "Property deleted successfully.",
     });
   } catch (error) {
     next(error);
