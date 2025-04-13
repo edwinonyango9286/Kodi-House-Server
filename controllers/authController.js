@@ -11,19 +11,15 @@ const User = require("../models/userModel");
 const logger = require("../utils/logger");
 const _ = require("lodash");
 const Role = require("../models/roleModel");
+const sendSMS = require("../utils/sendSms");
 
 //create user activation token
 const createActivationToken = (user) => {
   const activationCode = Math.floor(1000 + Math.random() * 9000).toString();
   const token = jwt.sign(
-    {
-      user,
-      activationCode,
-    },
+    {user,activationCode},
     process.env.ACTIVATION_SECRET,
-    {
-      expiresIn: "5min",
-    }
+    {expiresIn: "5min"}
   );
   return { token, activationCode };
 };
@@ -34,51 +30,28 @@ const registerNewUser = asyncHandler(async (req, res, next) => {
     const { userName, email, password, termsAndConditionsAccepted } = req.body;
     // check for required fields
     if (!userName || !email || !password || !termsAndConditionsAccepted) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
+      return res.status(400).json({status: "FAILED",message: "Please provide all the required fields."});
     }
     // validate user email
     if (!emailValidator.validate(email)) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide a valid email address.",
-      });
+      return res.status(400).json({status: "FAILED",message: "Please provide a valid email address."});
     }
     validatePassword(password);
     // check if the user already exist in the database using email.
     const user = await User.findOne({ email });
-    if (user) {
-      return res.status(409).json({
-        status: "FAILED",
-        message:
-          "An account with this email address already exists. Please use a different email address or log in to your existing account.",
-      });
+    if (user) {return res.status(409).json({status: "FAILED",message:"An account with this email address already exists. Please use a different email address or log in to your existing account.",});
     }
-    const newUser = {
-      userName,
-      email,
-      password,
-      termsAndConditionsAccepted,
-    };
+    const newUser = {userName,email,password,termsAndConditionsAccepted};
     const activationToken = createActivationToken(newUser);
     const activationCode = activationToken.activationCode;
-    const data = {
-      newUser: { userName: newUser?.userName },
-      activationCode,
-    };
-    await sendMail({
-      email: newUser?.email,
-      subject: "Account Activation",
-      template: "account-activation-mail.ejs",
-      data,
-    });
-    return res.status(200).json({
-      success: true,
-      message: `An account activation code has been sent to ${newUser?.email}. Please check it.`,
-      activationToken: activationToken?.token,
-    });
+    const data = {newUser: { userName: newUser?.userName },activationCode};
+    await sendMail({email: newUser?.email,subject: "Account Activation",template: "account-activation-mail.ejs",data});
+
+    // const to = "+254719547267";
+    // const message = `Your activation code is: ${activationCode}`;
+    // await sendSMS(to, message);
+
+    return res.status(200).json({success: true,message: `An account activation code has been sent to ${newUser?.email}. Please check it.`,activationToken: activationToken?.token});
   } catch (error) {
     logger.error(error.message);
     next(error);
@@ -90,64 +63,36 @@ const activateUserAccount = asyncHandler(async (req, res, next, roleName) => {
   try {
     const { activationToken, activationCode } = req.body;
     if (!activationToken || !activationCode) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
+      return res.status(400).json({status: "FAILED",message: "Please provide all the required fields."});
     }
     let newUser;
     try {
       newUser = jwt.verify(activationToken, process.env.ACTIVATION_SECRET);
     } catch (err) {
       if (err.name === "TokenExpiredError") {
-        return res
-          .status(400)
-          .json({ status: "FAILED", message: "Activation token has expired." });
+        return res.status(400).json({ status: "FAILED", message: "Activation token has expired." });
       }
-      return res
-        .status(400)
-        .json({ status: "FAILED", message: "Invalid activation token." });
+      return res.status(400).json({ status: "FAILED", message: "Invalid activation token." });
     }
 
     if (newUser.activationCode !== activationCode) {
-      return res
-        .status(400)
-        .json({ status: "FAILED", message: "Invalid activation code" });
+      return res.status(400).json({ status: "FAILED", message: "Invalid activation code" });
     }
     const { userName, email, password, termsAndConditionsAccepted } =
       newUser.user;
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(409).json({
-        status: "FAILED",
-        message:
-          "An account with this email address already exists. Please use a different email address or log in to your existing account.",
-      });
+      return res.status(409).json({status: "FAILED",message:"An account with this email address already exists. Please use a different email address or log in to your existing account."});
     }
 
     // Fetch the role ObjectId based on the role name
     const role = await Role.findOne({ name: _.startCase(_.toLower(roleName)) });
-
     if (!role) {
-      return res.status(404).json({
-        status: "FAILED",
-        message: "Role not found.",
-      });
+      return res.status(404).json({status: "FAILED",message: "Role not found."});
     }
-
     const user = await User.create({
-      userName: _.startCase(_.toLower(userName)),
-      email,
-      password,
-      termsAndConditionsAccepted,
-      role: role._id,
-    });
-
-    return res.status(201).json({
-      status: "SUCCESS",
-      message:
-        "Your account has been successfully activated. Please proceed to log in.",
-    });
+    userName: _.startCase(_.toLower(userName)),email,password,termsAndConditionsAccepted,role: role._id});
+    return res.status(201).json({status: "SUCCESS",message:"Your account has been successfully activated. Please proceed to log in.",});
   } catch (error) {
     logger.error(error.message);
     next(error);
@@ -227,18 +172,12 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
 
     // Check if user exists and has the expected role
     if (!user || user.role.name !== expectedRole) {
-      return res.status(404).json({
-        status: "FAILED",
-        message: `${expectedRole} account not found or not authorized.`,
-      });
+      return res.status(404).json({status: "FAILED",message: `${expectedRole} account not found or not authorized.`});
     }
 
     // Check password
     if (!(await user.isPasswordMatched(password))) {
-      return res.status(401).json({
-        status: "FAILED",
-        message: "Wrong email or password.",
-      });
+      return res.status(401).json({status: "FAILED",message: "Wrong email or password."});
     }
 
     // Generate tokens

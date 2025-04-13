@@ -2,12 +2,23 @@ const mongoose = require("mongoose");
 
 const propertySchema = new mongoose.Schema(
   {
-    owner: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Landlord",
+      ref: "User",
       required: true,
       validate: {
         validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
+
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props.value} is not a valid objectId`,

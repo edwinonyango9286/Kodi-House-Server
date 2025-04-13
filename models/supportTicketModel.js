@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
 
-const roleSchema = new mongoose.Schema(
+const supportTicketSchema = new mongoose.Schema(
   {
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
       required: true,
+      ref: "User",
       validate: {
         validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
@@ -20,43 +20,28 @@ const roleSchema = new mongoose.Schema(
         validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
         },
-        message: (props) => `${props.value} is not a valid objectId`,
+        message: (props) => `${props} is not a valid object id.`,
       },
     },
     name: {
       type: String,
       required: true,
-      trim: true,
     },
     description: {
       type: String,
       required: true,
     },
-    permissions: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Permission",
-        validate: {
-          validator: (id) => {
-            return mongoose.Types.ObjectId.isValid(id);
-          },
-          message: (props) => `${props} is not a valid object id `,
-        },
-      },
-    ],
-    slug: {
-      type: String,
-      required: true,
-    },
+
     status: {
       type: String,
-      required: true,
       enum: ["Active", "Disabled"],
     },
+
     isDeleted: {
       type: Boolean,
       default: false,
     },
+
     deletedAt: {
       type: Date,
       default: null,
@@ -68,7 +53,7 @@ const roleSchema = new mongoose.Schema(
         validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
         },
-        message: (props) => `${props.value} is not a valid objectId`,
+        message: (props) => `${props} is not a valid object id.`,
       },
     },
   },
@@ -77,4 +62,4 @@ const roleSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Role", roleSchema);
+module.exports = mongoose.model("SupportTicket", supportTicketSchema);

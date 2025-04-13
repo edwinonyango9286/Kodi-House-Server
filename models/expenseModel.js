@@ -8,7 +8,7 @@ const expenseSchema = new mongoose.Schema(
       ref: "Property",
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props.value} is not a valid objectId`,
       },
@@ -20,7 +20,7 @@ const expenseSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props} is not a valid objectId`,
       },
@@ -41,13 +41,14 @@ const expenseSchema = new mongoose.Schema(
         "Repairs",
       ],
     },
+
     user: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
       ref: "User",
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId(id);
+          return mongoose.Types.ObjectId(id);
         },
         message: (props) => `${props} is not a valid objectId.`,
       },
@@ -59,8 +60,6 @@ const expenseSchema = new mongoose.Schema(
     description: {
       type: String,
       required: true,
-      trim: true,
-      lowercase: true,
       minleghth: 2,
       maxlength: 2000,
     },

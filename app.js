@@ -47,6 +47,7 @@ const unitCategoryRouter = require("./routes/unitCategoryRoute");
 const permissionRouter = require("./routes/permissionRoutes");
 const propertyTypeRouter = require("./routes/propertyTypeRoutes");
 const propertyTagRouter = require("./routes/propertyTagRoutes");
+const supportTicketRouter = require("./routes/supportTicketRoutes");
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -104,5 +105,6 @@ app.use("/api/v1/unit-categories", unitCategoryRouter);
 app.use("/api/v1/permissions", permissionRouter);
 app.use("/api/v1/property-types", propertyTypeRouter);
 app.use("/api/v1/property-tags", propertyTagRouter);
+app.use("/api/v1/support-tickets", supportTicketRouter);
 
 module.exports = app;

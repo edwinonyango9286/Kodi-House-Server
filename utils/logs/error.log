@@ -1,1 +1,0 @@
-{"level":"error","message":"Plan executor error during findAndModify :: caused by :: Performing an update on the path '_id' would modify the immutable field '_id'","timestamp":"2025-03-19 11:51:31"}

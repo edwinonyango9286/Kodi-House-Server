@@ -2,13 +2,25 @@ const mongoose = require("mongoose");
 
 const leaseSchema = new mongoose.Schema(
   {
-    tenant: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Tenant",
+      ref: "User",
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId(id);
+          return mongoose.Types.ObjectId(id);
+        },
+        message: (props) => `${props} is not a valid mongodbId`,
+      },
+    },
+
+    tenant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId(id);
         },
         message: (props) => `${props} is not a valid mongodbId`,
       },
@@ -20,7 +32,7 @@ const leaseSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId(id);
+          return mongoose.Types.ObjectId(id);
         },
         message: (props) => `${props} is not a valid mongodbId`,
       },
@@ -32,7 +44,7 @@ const leaseSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId(id);
+          return mongoose.Types.ObjectId(id);
         },
         message: (props) => `${props} is not a valid mongodbId`,
       },
@@ -95,6 +107,24 @@ const leaseSchema = new mongoose.Schema(
     leaseAmount: {
       type: Number,
       required: true,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId(id);
+        },
+        message: (props) => `${props} is not a valid mongodbId`,
+      },
     },
     status: {
       type: String,

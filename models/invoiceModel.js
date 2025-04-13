@@ -2,10 +2,10 @@ const mongoose = require("mongoose");
 
 const InvoiceSchema = new mongoose.Schema(
   {
-    landlord: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: "Landlord",
+      ref: "User",
       validate: {
         validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
@@ -23,8 +23,6 @@ const InvoiceSchema = new mongoose.Schema(
       required: true,
       minlength: 2,
       maxlength: 2000,
-      trim: true,
-      lowercase: true,
     },
     allowedMethodOfPayment: {
       type: String,
@@ -60,7 +58,7 @@ const InvoiceSchema = new mongoose.Schema(
     },
     tenant: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Tenant",
+      ref: "User",
       required: true,
       validate: {
         validator: function (id) {

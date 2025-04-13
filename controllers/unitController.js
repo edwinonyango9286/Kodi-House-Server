@@ -166,7 +166,7 @@ const getAllUnits = expressAsyncHandler(async (req, res, next) => {
 
     let query = Unit.find(JSON.parse(queryStr))
       .populate({
-        path: "landlord",
+        path: "createdBy",
         select: "userName",
       })
       .populate({ path: "property", select: "name" })

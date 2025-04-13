@@ -2,6 +2,29 @@ const mongoose = require("mongoose");
 
 const receiptSchema = new mongoose.Schema(
   {
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
+
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
+
     invoice: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Invoice",
@@ -20,7 +43,7 @@ const receiptSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props.value} is not a valid objectId`,
       },
@@ -32,7 +55,7 @@ const receiptSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props.value} is not a valid objectId`,
       },
@@ -44,7 +67,7 @@ const receiptSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props.value} is not a valid objectId`,
       },
@@ -60,8 +83,6 @@ const receiptSchema = new mongoose.Schema(
       required: true,
       minlength: 2,
       maxlength: 2000,
-      trim: true,
-      lowercase: true,
     },
     amount: {
       type: Number,

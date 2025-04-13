@@ -53,6 +53,16 @@ const permissionSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
   },
   {
     timestamps: true,

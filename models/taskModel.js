@@ -1,13 +1,33 @@
 const mongoose = require("mongoose");
 
 const taskSchema = new mongoose.Schema({
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+    validate: {
+      validator: (id) => {
+        return mongoose.Types.ObjectId.isValid(id);
+      },
+      message: (props) => `${props.value} is not a valid objectId`,
+    },
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    validate: {
+      validator: (id) => {
+        return mongoose.Types.ObjectId.isValid(id);
+      },
+      message: (props) => `${props.value} is not a valid objectId`,
+    },
+  },
   title: {
     type: String,
     required: true,
     trim: true,
     minlength: 2,
     maxlength: 50,
-    lowercase: true,
   },
   category: {
     type: String,

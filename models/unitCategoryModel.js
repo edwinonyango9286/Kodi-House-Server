@@ -2,9 +2,9 @@ const mongoose = require("mongoose");
 
 const unitCategorySchema = new mongoose.Schema(
   {
-    landlord: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Landlord",
+      ref: "User",
       required: true,
       validate: {
         validator: (id) => {
@@ -13,11 +13,26 @@ const unitCategorySchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid ObjectId.`,
       },
     },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
     name: {
       type: String,
       required: true,
       minlength: 2,
       maxlenth: 32,
+    },
+    status: {
+      type: String,
+      required: true,
+      enum: ["Active", "Disabled"],
     },
     isDeleted: {
       type: Boolean,
@@ -26,6 +41,16 @@ const unitCategorySchema = new mongoose.Schema(
     deletedAt: {
       type: Date,
       default: null,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
     },
   },
   {

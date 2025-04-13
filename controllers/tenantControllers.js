@@ -195,7 +195,7 @@ const getAllTenants = expressAsyncHandler(async (req, res, next) => {
       deletedAt: null,
       landlord: req.landlord._id,
     })
-      .populate({ path: "landlord", select: "userName" })
+      .populate({ path: "createdBy", select: "userName" })
       // a tenant can have more than one property assigned to them
       .populate({ path: "properties", select: "name" })
       //  a tenant can have more that one unit assigned to them

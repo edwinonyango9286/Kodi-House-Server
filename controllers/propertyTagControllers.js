@@ -22,10 +22,8 @@ const createAPropertyTag = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-
 const updateAPropertyTag = expressAsyncHandler(async(req,res,next)=>{
     try {
-
         const {name,status, description} = req.body;
         if(!name || !status || !description){
             return res.status(400).json({ status:"FAILED", message:"Please provide all the required fields."})
@@ -57,9 +55,6 @@ const getAPropertyTag = expressAsyncHandler(async(req,res,next)=>{
     }
 })
 
-
-
-
 const getAllPropertyTags = expressAsyncHandler(async(req,res,next)=>{
     try {
         const queryObject = {...req.query}
@@ -74,7 +69,6 @@ const getAllPropertyTags = expressAsyncHandler(async(req,res,next)=>{
       } else {
         query = query.sort("-createdAt");
       }
-
            // Field limiting
       if (req.query.fields) {
         const fields = req.query.fields.split(",").join(" ");
@@ -82,7 +76,6 @@ const getAllPropertyTags = expressAsyncHandler(async(req,res,next)=>{
       } else {
         query = query.select("-__v");
       }
-
       // Pagination
       const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100) ;
       const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0) 
@@ -92,14 +85,10 @@ const getAllPropertyTags = expressAsyncHandler(async(req,res,next)=>{
       const totalCount = await PropertyTag.countDocuments({...queryObject, isDeleted:false, deletedAt:null})
       const totalPages = Math.ceil(totalCount/ limit)
     return  res.status(200).json({ status:"SUCCESS", data: propertyTags , totalCount, totalPages, limit, offset})
-
     } catch (error) {
         next(error)
     }
 })
-
-
-
 
 const deleteAPropertyTag = expressAsyncHandler(async(req,res,next)=>{
     try {
@@ -109,7 +98,6 @@ const deleteAPropertyTag = expressAsyncHandler(async(req,res,next)=>{
         return res.status(404).json({ status:"FAILED", message: "Property tag not found."})
        }
        return res.status(200).json({ status:"SUCCESS", message:"Property tag deleted successfully.", data: deletedPropertyTag})
-        
     } catch (error) {
         next(error)
     }

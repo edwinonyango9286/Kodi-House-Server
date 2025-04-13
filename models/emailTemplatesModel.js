@@ -1,16 +1,17 @@
 const mongoose = require("mongoose");
+const { validate } = require("./userModel");
 
-const messageSchema = new mongoose.Schema(
+const emailTemplateSchema = new mongoose.Schema(
   {
-    CreatedBy: {
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
       validate: {
-        validator: function (id) {
+        validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
         },
-        message: (props) => `${props.value} is not a valid objectId`,
+        message: (props) => `${props} is not a valid object id.`,
       },
     },
 
@@ -18,46 +19,35 @@ const messageSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       validate: {
-        validator: function (id) {
+        validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
         },
-        message: (props) => `${props.value} is not a valid objectId`,
+        message: (props) => `${props} is not a valid object id.`,
       },
     },
-    tenant: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+
+    name: {
+      type: String,
       required: true,
-      validate: {
-        validator: function (id) {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props.value} is not a valid objectId`,
-      },
+      minlenght: 2,
+      maxlength: 50,
+    },
+
+    description: {
+      type: String,
+      required: true,
+      maxlength: 2000,
+      minlenght: 2,
     },
 
     category: {
       type: String,
       required: true,
-      enum: ["Work", "Private", "Support", "Promotion"],
     },
 
-    subject: {
+    status: {
       type: String,
-      required: true,
-      minlength: 1,
-      maxlength: 50,
-    },
-    tag: {
-      type: String,
-      required: true,
-    },
-    messageBody: {
-      type: String,
-      required: true,
-      lowercase: true,
-      minlength: 1,
-      maxlength: 2000,
+      enum: ["Active", "Disabled"],
     },
     isDeleted: {
       type: Boolean,
@@ -74,7 +64,7 @@ const messageSchema = new mongoose.Schema(
         validator: (id) => {
           return mongoose.Types.ObjectId.isValid(id);
         },
-        message: (props) => `${props.value} is not a valid objectId`,
+        message: (props) => `${props} is not a valid object id.`,
       },
     },
   },
@@ -83,4 +73,4 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Message", messageSchema);
+module.exports = mongoose.model("EmailTemplate", emailTemplateSchema);
