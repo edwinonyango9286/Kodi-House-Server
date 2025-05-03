@@ -1,7 +1,6 @@
 const Property = require("../models/propertyModel");
 const expressAsyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongoDbId");
-const Tenant = require("../models/tenantModel");
 const _ = require("lodash");
 const { descriptionFormater } = require("../utils/stringFormaters");
 
@@ -10,61 +9,17 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { _id } = req.user;
     validateMongoDbId(_id);
-    const {
-      name,
-      category,
-      type,
-      numberOfUnits,
-      rent,
-      briefDescription,
-      googleMap,
-      images,
-      location,
-      currentStatus,
-    } = req.body;
-    if (
-      !name ||
-      !category ||
-      !type ||
-      !numberOfUnits ||
-      !rent ||
-      !briefDescription ||
-      !googleMap ||
-      !images ||
-      !location ||
-      !currentStatus
-    ) {
-      return res.status(404).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
-    }
+
+    const {name,category,type,numberOfUnits,rent,briefDescription,googleMap,images,location,currentStatus} = req.body;
+    if ( !name || !category || !type || !numberOfUnits || !rent || !briefDescription || !googleMap || !images || !location || !currentStatus) {
+      return res.status(404).json({status: "FAILED",message: "Please provide all the required fields.",})}
     // check for existing property by name
-    const existingProperty = await Property.findOne({
-      owner: _id,
-      name: _.startCase(_.toLower(name)),
-      isDeleted: false,
-      deletedAt: null,
-    });
+    const existingProperty = await Property.findOne({ owner: _id, name: _.startCase(_.toLower(name)), isDeleted: false, deletedAt: null});
     if (existingProperty) {
-      return res
-        .status(409)
-        .json({
-          status: "FAILED",
-          message: `Property ${existingProperty.name} already exist.`,
-        });
+      return res.status(409).json({  status: "FAILED",  message: `Property ${existingProperty.name} already exist.`,})
     }
-    const newProperty = await Property.create({
-      ...req.body,
-      name: _.startCase(_.toLower(name)),
-      briefDescription: descriptionFormater(briefDescription),
-      owner: _id,
-    });
-    return res.status(201).json({
-      status: "SUCCESS",
-      message: "Property created successfully.",
-      data: newProperty,
-    });
+    const newProperty = await Property.create({...req.body,name: _.startCase(_.toLower(name)),briefDescription: descriptionFormater(briefDescription),owner: _id,});
+    return res.status(201).json({status: "SUCCESS",message: "Property created successfully.",data: newProperty});
   } catch (error) {
     next(error);
   }

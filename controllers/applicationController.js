@@ -97,10 +97,4 @@ const deleteApplication = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = {
-  createApplication,
-  getApplication,
-  getAllApplications,
-  updateApplication,
-  deleteApplication,
-};
+module.exports = {createApplication,getApplication,getAllApplications,updateApplication,deleteApplication};
