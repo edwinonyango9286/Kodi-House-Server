@@ -1,18 +1,5 @@
 const express = require("express");
-const {
-  registerNewUser,
-  activateAdminAccount,
-  activateLandlordAccount,
-  activateTenantAccount,
-  signInAdmin,
-  signInTenant,
-  signInLandlord,
-  refreshUserAccessToken,
-  updatePassword,
-  resetPassword,
-  passwordResetToken,
-  logout,
-} = require("../controllers/authController");
+const {registerNewUser,activateAdminAccount,activateLandlordAccount,activateTenantAccount,signInAdmin,signInTenant,signInLandlord,refreshUserAccessToken,updatePassword,resetPassword,passwordResetToken,logout} = require("../controllers/authController");
 
 const router = express.Router();
 

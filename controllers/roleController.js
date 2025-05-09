@@ -11,20 +11,13 @@ const createARole = expressAsyncHandler(async (req, res, next) => {
   try {
     const { name, description, status } = req.body;
     if (!name || !description || !status) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
+      return res.status(400).json({status: "FAILED",message: "Please provide all the required fields."});
     }
     // check if the role already exist by name
-    const existingRole = await Role.findOne({
-      name: _.startCase(_.toLower(name)),
-    });
+    const existingRole = await Role.findOne({name: _.startCase(_.toLower(name))});
     // if the role already exist and isDeleted is true then update the role
     if (existingRole) {
-      return res
-        .status(400)
-        .json({ status: "FAILED", message: "Role already exist." });
+      return res.status(400).json({ status: "FAILED", message: "Role already exist." });
     }
     const createdRole = await Role.create({
       ...req.body,
@@ -50,37 +43,22 @@ const grantPermissionToARole = expressAsyncHandler(async (req, res, next) => {
   try {
     const { roleId } = req.params;
     const { permissionId } = req.body;
-
-    console.log(roleId)
     validateMongoDbId(roleId);
 
-    if (!permissionId) {
-      return res
-        .status(400)
-        .json({ status: "FAILED", message: "Please provide permission Id." });
-    }
+    if (!permissionId) { return res.status(400).json({ status: "FAILED", message: "Please provide permission Id." })}
     validateMongoDbId(permissionId);
 
- 
     const grantedRole = await Role.findOneAndUpdate(
-      {
-        _id: roleId,
-      },
+      { _id: roleId,},
       {
         $addToSet: { permissions: permissionId },
       },
       { new: true, runValidators: true }
     );
     if (!grantedRole) {
-      return res
-        .status(400)
-        .json({ status: "FAILED", message: "Role not found." });
+      return res.status(400).json({ status: "FAILED", message: "Role not found." });
     }
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: `Permission granted to ${grantedRole.name} sucessfully.`,
-      data: grantedRole,
-    });
+    return res.status(200).json({status: "SUCCESS",message: `Permission granted to ${grantedRole.name} sucessfully.`,data: grantedRole});
   } catch (error) {
     next(error);
   }

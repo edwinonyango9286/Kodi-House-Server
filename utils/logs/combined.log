@@ -1,0 +1,6 @@
+{"level":"error","timestamp":"2025-05-06 12:27:08"}
+{"_message":"Role validation failed","errors":{"createdBy":{"kind":"required","message":"Path `createdBy` is required.","name":"ValidatorError","path":"createdBy","properties":{"message":"Path `createdBy` is required.","path":"createdBy","type":"required"}}},"level":"error","message":"Role validation failed: createdBy: Path `createdBy` is required.","name":"ValidationError","timestamp":"2025-05-06 12:29:44"}
+{"level":"error","message":"Cast to date failed for value \"null\" (type string) at path \"deletedAt\" for model \"Permission\"","timestamp":"2025-05-08 12:17:39"}
+{"level":"error","message":"Cannot read properties of null (reading 'name')","timestamp":"2025-05-08 12:37:08"}
+{"level":"error","message":"Cannot read properties of null (reading 'name')","timestamp":"2025-05-08 12:38:40"}
+{"level":"error","message":"Cannot read properties of null (reading 'name')","timestamp":"2025-05-08 12:40:41"}
