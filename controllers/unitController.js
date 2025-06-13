@@ -150,55 +150,37 @@ const updateAUnit = expressAsyncHandler(async (req, res, next) => {
 const getAllUnits = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
-    // exclude fileds for paginantion and sorting
-    const excludedFields = ["page", "sort", "limit", "offset", "fields"];
-    excludedFields.forEach((el) => delete queryObject[el]);
-    queryObject.isDeleted = false;
-    queryObject.deletedAt = null;
+    const excludeFields = ["page", "sort", "limit", "offset", "fields"];
+    excludeFields.forEach((el) => delete queryObject[el]);
 
     let queryStr = JSON.stringify(queryObject);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    // check if the request is from a landlord then filter by landlord id
-    if (req.landlord && req.landlord._id) {
-      queryObject.landlord = req.landlord._id;
+    let query = Unit.find({...JSON.parse(queryStr),isDeleted: false,deletedAt: null,})
+    .populate({path: "createdBy",select: "userName",populate: { path: "role",select: "name"}})
+    .populate("currentOccupant", "firstName secondName")
+    .populate("type", "name")
+    .populate("category", "name");
+
+    if (req.user?.role?.name === "Landlord") {
+      query = query.where("createdBy").equals(req.user._id);
     }
 
-    let query = Unit.find(JSON.parse(queryStr))
-      .populate({
-        path: "createdBy",
-        select: "userName",
-      })
-      .populate({ path: "property", select: "name" })
-      .populate({ path: "category", select: "name" });
-
-    // sorting
-    if (req.query.sort) {
-      const sortBy = req.query.sort.split(",").join(" ");
-      query = query.sort(sortBy);
-    } else {
-      query = query.sort("-createdAt");
-    }
-
-    // field limiting
-    if (req.query.fields) {
-      const fields = req.query.fields.split(",").join(" ");
-      query = query.select(fields);
-    } else {
-      query = query.select("-__v");
-    }
-
-    // pagination
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const offset = parseInt(req.query.offset, 10) || 0;
-    query = query.skip(offset).limit(limit);
-
-    const units = await query;
-    return res.status(200).json({ status: "SUCCESS", data: units });
+    if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
+    if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
+    
+    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
+    
+    const units = await query.skip(skip).limit(limit);
+    
+   return res.status(200).json({status: "SUCCESS", message:"Units listed successfully.", data: units,});
   } catch (error) {
     next(error);
   }
 });
+
 
 // delete a unit => in production deletion will be disabled
 const deleteAUnit = expressAsyncHandler(async (req, res, next) => {

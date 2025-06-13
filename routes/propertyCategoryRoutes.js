@@ -1,9 +1,10 @@
 const express = require("express");
 const {addAPropertyCategory,getAllPropertyCategories} = require("../controllers/propertyCategoryController");
+const { checkUserRole, verifyUserToken } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
-router.post("/add_a_property_category",addAPropertyCategory);
-router.get("/get_all_property_categories",getAllPropertyCategories);
+router.post("/create", verifyUserToken, checkUserRole(["Admin","Landlord"]), addAPropertyCategory);
+router.get("/list/property-categories",verifyUserToken, checkUserRole(["Admin","Landlord"]), getAllPropertyCategories);
 
 module.exports = router;

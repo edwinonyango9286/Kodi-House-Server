@@ -1,11 +1,12 @@
 const express = require("express");
 const {addANewUnit,updateAUnit,deleteAUnit,getAllUnits,addFields,} = require("../controllers/unitController");
+const { verifyUserToken, checkUserRole } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 router.post("/add_a_unit", addANewUnit);
 router.patch("/update_a_unit/:unitId",updateAUnit);
 router.delete("/delete_a_unit/:unitId",deleteAUnit);
 router.put("/update", addFields);
-router.get("/get_all_units", getAllUnits);
+router.get("/units",verifyUserToken, checkUserRole(["Admin", "Landlord"]),getAllUnits);
 
 module.exports = router;

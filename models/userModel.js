@@ -4,9 +4,18 @@ const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
+     createdBy: {
+         type: mongoose.Schema.Types.ObjectId,
+         ref: "User",
+         validate: {
+           validator: (id) => {
+             return mongoose.Types.ObjectId.isValid(id);
+           },
+           message: (props) => `${props} is not a valid object id.`,
+         },
+       },
     userName: {
       type: String,
-      required: true,
       minlength: 2,
       maxlength: 50,
       trim: true,
@@ -38,6 +47,12 @@ const userSchema = new mongoose.Schema(
       maxlength: 50,
       lowercase: true,
       trim: true,
+    },
+    description:{
+      type:String,
+      trim:true,
+      minlength:2,
+      maxlength:50,
     },
     businessName: {
       type: String,
@@ -159,7 +174,6 @@ const userSchema = new mongoose.Schema(
     },
     termsAndConditionsAccepted: {
       type: Boolean,
-      required: true,
     },
     termsAndConditionsAcceptedAt: {
       type: Date,
@@ -175,9 +189,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    return next();
-  }
+  if (!this.isModified("password")) {return next();}
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
@@ -189,10 +201,7 @@ userSchema.methods.isPasswordMatched = async function (enteredPassword) {
 
 userSchema.methods.createPasswordResetToken = async function () {
   const resetToken = crypto.randomBytes(32).toString("hex");
-  this.passwordResetToken = crypto
-    .createHash("sha256")
-    .update(resetToken)
-    .digest("hex");
+  this.passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
   return resetToken;
 };

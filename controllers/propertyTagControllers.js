@@ -8,9 +8,7 @@ const validateMongoDbId = require("../utils/validateMongoDbId");
 const createAPropertyTag = expressAsyncHandler(async (req, res, next) => {
   try {
     const { name, status, description} = req.body;
-    if(!name || !status || !description){
-        return res.status(400).json({ status:"FAILED", message : "Please provide all the required fields."})
-    }
+    if(!name || !status || !description){ return res.status(400).json({ status:"FAILED", message : "Please provide all the required fields."}) }
     const existingTag = await PropertyTag.findOne({  name: _.startCase(_.toLower(name)), isDeleted: false , deletedAt:null})
     if(existingTag){
         return res.status(409).json({ status:"FAILED", message:`Property tag ${existingTag.name} already exist.`})
@@ -22,12 +20,11 @@ const createAPropertyTag = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
+
 const updateAPropertyTag = expressAsyncHandler(async(req,res,next)=>{
     try {
         const {name,status, description} = req.body;
-        if(!name || !status || !description){
-            return res.status(400).json({ status:"FAILED", message:"Please provide all the required fields."})
-        }
+        if(!name || !status || !description){ return res.status(400).json({ status:"FAILED", message:"Please provide all the required fields."}) }
         const {propertyTagId} = req.params
         validateMongoDbId(propertyTagId)
 

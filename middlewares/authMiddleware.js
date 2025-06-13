@@ -70,29 +70,16 @@ const checkUserRole = (roles) => {
 
 const checkUserPermission = (permission) => {
   return expressAsyncHandler(async (req, res, next) => {
+    console.log(permission,"=>permission")
     const { email } = req.user;
-    const user = await User.findOne({ email }).populate({
-      path: "role",
-      populate: {
-        path: "permissions",
-        model: "Permission",
-      },
-    });
+    const user = await User.findOne({ email }).populate({ path: "role",populate: {path: "permissions",model: "Permission",},});
     if (!user) {
-      return res.status(404).json({
-        status: "FAILED",
-        message:
-          "We couldn't find an account associated with this email address. Please double-check your email address and try again.",
-      });
+      return res.status(404).json({ status: "FAILED", message:"We couldn't find an account associated with this email address. Please double-check your email address and try again.",});
     }
-    const userPermissions = user.role.permissions.map(
-      (permission) => permission.name
-    );
+    const userPermissions = user.role.permissions.map((permission) => permission.permissionName);
+    console.log(userPermissions,"userPermissions")
     if (!userPermissions.includes(permission)) {
-      return res.status(403).json({
-        status: "FAILED",
-        message: "Not authorized.",
-      });
+      return res.status(403).json({status: "FAILED",message: "Not authorized...",});
     }
     next();
   });
@@ -101,8 +88,4 @@ const checkUserPermission = (permission) => {
 
 
 
-module.exports = {
-  verifyUserToken,
-  checkUserRole,
-  checkUserPermission,
-};
+module.exports = {verifyUserToken,checkUserRole,checkUserPermission};

@@ -22,6 +22,8 @@ const createAPropertyType = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
+
+
 const updateApropertyType = expressAsyncHandler(async(req,res,next)=>{
     try {
         const {propertyTypeId} = req.params;

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Account Creation</title>
+    <style type="text/css">
+      /* Base */
+      body {
+        margin: 0;
+        padding: 0;
+        min-width: 100%;
+        font-family: "Gowun Batang", sans-serif;
+        font-size: 14px;
+        line-height: 1.25;
+        background-color: #fafafa;
+        color: #222222;
+      }
+      a {
+        color: #000;
+        text-decoration: none;
+      }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1;
+        margin-top: 0;
+        margin-bottom: 14px;
+        text-align: center;
+      }
+      p {
+        margin-top: 0;
+        margin-bottom: 24px;
+      }
+      table td {
+        vertical-align: top;
+      }
+      /* Layout */
+      .email-wrapper {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .email-header {
+        background-color: #0070f3;
+        padding: 24px;
+        color: #ffffff;
+      }
+      .email-body {
+        padding: 24px;
+        background-color: #ffffff;
+      }
+      .email-footer {
+        background-color: #f6f6f6;
+        padding: 24px;
+      }
+      /* Buttons */
+      .button {
+        display: inline-block;
+        background-color: #0070f3;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-wrapper">
+      <div class="email-header"><h1>User Account Creation</h1></div>
+      <div class="email-body">
+        <p>Hello <%= user.userName.charAt(0).toUpperCase() + user.userName.slice(1).toLowerCase() %>,</p>
+        <p>Your account has been created successfully. Please use the bellow credentials to access your account.</p>
+        <h3>email : <%= user.email%></h3>
+        <h3>Password : <%= password%></h3>
+        <p>If you haven't requested for an account creation kindly ignore this email. </p>
+      </div>
+      <div class="email-footer">If you have any question, Please don't hesitate to contact us at
+        <a href="mailto:support@kodihouse.devs@gmail.com">support@kodihouse.devs@gmail.com</a>
+      </div>
+    </div>
+  </body>
+</html>

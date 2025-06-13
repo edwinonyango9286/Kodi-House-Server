@@ -7,40 +7,29 @@ const slugify = require("slugify");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const Role = require("../models/roleModel");
 
+
 const createAPermission = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { name, description } = req.body;
-    if (!name || !description) {
-      return res.status(400).json({
-        status: "SUCCESS",
-        message: "Please provide all the required fields.",
-      });
-    }
+    const { permissionName, description, status } = req.body;
+    if (!permissionName || !description || !status) { return res.status(400).json({status: "SUCCESS",message: "Please provide all the required fields.",});}
     // check if a permission with a similar name already exist
-    const existingPermission = await Permission.findOne({ name });
+    const newPermissionName = permissionName.split(" ").join("_");
+    const existingPermission = await Permission.findOne({ permissionName:newPermissionName, isDeleted:false, deletedAt:null });
+    
     if (existingPermission) {
-      return res.status(409).json({
-        status: "FAILED",
-        message: `${existingPermission.name} permission already exist.`,
-      });
-    }
-    const createdPermission = await Permission.create({
-      ...req.body,
-      createdBy: req.user._id,
-      description: descriptionFormater(description),
-      slug: slugify(name),
-    });
 
-    return res.status(201).json({
-      status: "SUCCESS",
-      message: "Permission created successfully.",
-      data: createdPermission,
-    });
+      return res.status(409).json({ status: "FAILED",message: `${existingPermission.permissionName} permission already exist.`,});
+    }
+    const createdPermission = await Permission.create({...req.body,permissionName:newPermissionName,createdBy: req.user._id, description: descriptionFormater(description),slug: slugify(newPermissionName),});
+    return res.status(201).json({status: "SUCCESS",message: "Permission created successfully.",data: createdPermission,});
   } catch (error) {
     logger.error(error.message);
     next(error);
   }
 });
+
+
+
 
 const updateAPermission = expressAsyncHandler(async (req, res, next) => {
   try {
@@ -82,11 +71,8 @@ const updateAPermission = expressAsyncHandler(async (req, res, next) => {
 
 const getAllPermissions = expressAsyncHandler(async (req, res, next) => {
   try {
-    const permissions = await Permission.find({
-      isDeleted: false,
-      deletedAt: null,
-    });
-    return res.status(200).json({ status: "SUCCESS", data: permissions });
+    const permissions = await Permission.find({isDeleted: false,deletedAt: null,}).populate("createdBy" , "userName" );
+    return res.status(200).json({ status: "SUCCESS", message:"Permissions listed successfully", data: permissions });
   } catch (error) {
     logger.error(error.message);
     next(error);

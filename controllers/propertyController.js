@@ -9,7 +9,6 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { _id } = req.user;
     validateMongoDbId(_id);
-
     const {name,category,type,numberOfUnits,rent,briefDescription,googleMap,images,location,currentStatus} = req.body;
     if ( !name || !category || !type || !numberOfUnits || !rent || !briefDescription || !googleMap || !images || !location || !currentStatus) {
       return res.status(404).json({status: "FAILED",message: "Please provide all the required fields.",})}
@@ -124,58 +123,37 @@ const getAllProperties = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
     const excludeFields = ["page", "sort", "limit", "offset", "fields"];
-    // delete exluded fields in the queryObject
-    excludeFields.forEach((element) => delete queryObject[element]);
+    excludeFields.forEach((el) => delete queryObject[el]);
 
-    let queryString = JSON.stringify(queryObject);
-    queryString = queryString.replace(
-      /\b(gte|gt|lte|lt)\b/g,
-      (match) => `$${match}`
-    );
+    let queryStr = JSON.stringify(queryObject);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    // check if the request is from a landlord then filter with landlord id
-    if (req.user && req.user._id) {
-      queryObject.owner = req.user._id;
+    let query = Property.find({...JSON.parse(queryStr),isDeleted: false,deletedAt: null,})
+    .populate({path: "createdBy",select: "userName",populate: { path: "role",select: "name"}})
+    .populate("currentOccupant", "firstName secondName")
+    .populate("type", "name")
+    .populate("category", "name");
+
+    if (req.user?.role?.name === "Landlord") {
+      query = query.where("createdBy").equals(req.user._id);
     }
 
-    let query = Property.find({
-      ...JSON.parse(queryString),
-      isDeleted: false,
-      deletedAt: null,
-    }) //populate for landlord
-      .populate({ path: "owner", select: "userName" })
-      .populate({ path: "currentOccupant", select: "firstName secondName" })
-      .populate({ path: "users", select: "firstName secondName" })
-      .populate({ path: "type", select: "name" })
-      .populate({ path: "category", select: "name" });
-
-    // sorting
-    if (req.query.sort) {
-      const sortBy = req.query.sort.split(",").join(" ");
-      query = query.sort(sortBy);
-    } else {
-      query = query.sort("-createdAt");
-    }
-
-    // field limiting
-    if (req.query.fields) {
-      const fields = req.query.fields.split(",").join(" ");
-      query = query.select(fields);
-    } else {
-      query = query.select("-__v");
-    }
-
-    // pagination
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const offset = parseInt(req.query.offset, 10) || 0;
-    query = query.skip(offset).limit(limit);
-
-    const properties = await query;
-    return res.status(200).json({ status: "SUCCESS", data: properties });
+    if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
+    if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
+    
+    const limit = parseInt(req.query.limit) || 10;
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
+    
+    const properties = await query.skip(skip).limit(limit);
+    
+   return res.status(200).json({status: "SUCCESS", message:"Properties listed successfully.", data: properties,});
   } catch (error) {
     next(error);
   }
 });
+
+
 
 // asign a property and to a tenant=> only properties that there type are single unit can be asigned to a single tenant
 const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
@@ -192,9 +170,7 @@ const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
     });
 
     if (!tenant) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Tenant not found." });
+      return res.status(404).json({ status: "FAILED", message: "Tenant not found." });
     }
 
     // check if a property is already assigned to another tenant

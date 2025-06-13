@@ -36,7 +36,7 @@ const swaggerDocs = swaggerJsDoc(swaggerOptions);
 // routers
 const applicationRouter = require("./routes/applicationRoutes");
 const roleRouter = require("./routes/roleRoutes");
-const landlordRouter = require("./routes/landlordRoutes");
+const userRouter = require("./routes/userRoutes");
 const tenantRouter = require("./routes/tenantRoute");
 const propertyRouter = require("./routes/propertyRoute");
 const authRouter = require("./routes/authRoutes");
@@ -55,6 +55,7 @@ const origins = [
   process.env.ORIGIN_LOCALHOST_3000,
   process.env.ORIGIN_LOCALHOST_3001,
   process.env.ORIGIN_LOCALHOST_4000,
+  process.env.ORIGIN_LOCALHOST_ADMIN,
   process.env.KODI_HOUSE_LANDLORDAPP_PRODUCTION_URL,
 ];
 
@@ -95,7 +96,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/applications", applicationRouter);
 app.use("/api/v1/roles", roleRouter);
-app.use("/api/v1/landlords", landlordRouter);
+app.use("/api/v1/user", userRouter);
 app.use("/api/v1/tenants", tenantRouter);
 app.use("/api/v1/properties", propertyRouter);
 app.use("/api/v1/invoices", invoiceRouter);

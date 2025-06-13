@@ -23,8 +23,7 @@ const permissionSchema = new mongoose.Schema(
         message: (props) => `${props} is not a valid object id`,
       },
     },
-
-    name: {
+    permissionName: {
       type: String,
       required: true,
       minLength: 2,

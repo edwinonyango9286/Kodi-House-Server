@@ -1,18 +1,6 @@
 const express = require("express");
-const {
-  registerNewUser,
-  activateAdminAccount,
-  activateLandlordAccount,
-  activateTenantAccount,
-  signInAdmin,
-  signInTenant,
-  signInLandlord,
-  refreshUserAccessToken,
-  updatePassword,
-  resetPassword,
-  passwordResetToken,
-  logout,
-} = require("../controllers/authController");
+const {registerNewUser, activateAdminAccount,activateLandlordAccount,activateTenantAccount,signInAdmin,signInTenant,signInLandlord,refreshUserAccessToken,updatePassword,resetPassword,passwordResetToken,logout,} = require("../controllers/authController");
+const { verifyUserToken } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 
@@ -89,7 +77,7 @@ router.post("/sign-in-admin", signInAdmin);
 router.post("/sign-in-tenant", signInTenant);
 router.post("/refresh-access-token", refreshUserAccessToken);
 router.post("/password-reset-token", passwordResetToken);
-router.put("/update-password", updatePassword);
+router.put("/update-password",verifyUserToken,updatePassword, );
 router.put("/reset-password/:token", resetPassword);
 router.post("/logout", logout);
 

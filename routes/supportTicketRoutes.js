@@ -6,7 +6,7 @@ const router = express.Router()
 router.post("/create",verifyUserToken, checkUserRole(["Admin"]), createASupportTicket)
 router.patch("/:supportTicketId/update", verifyUserToken, checkUserRole(["Admin"]), updateASupportTicket)
 router.patch("/:supportTicketId/delete", verifyUserToken, checkUserRole(["Admin"]),deleteASupportTicket )
-router.get("/supportTickets/get", getAllSupportTickets)
+router.get("/support-tickets/get", getAllSupportTickets)
 router.get("/:supportTicketId", getASupportTicket)
 
 module.exports = router

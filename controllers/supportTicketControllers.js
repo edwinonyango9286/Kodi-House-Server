@@ -11,12 +11,10 @@ const createASupportTicket = expressAsyncHandler(async (req, res, next) => {
     if(!name || !status || !description){
         return res.status(400).json({ status:"FAILED", message:"Please provide all the required fields."})
     }
-    // const existingSupportTicket = await SupportTicket.findOne({
-    //   name: _.startCase(_.toLower(name)),
-    // });
-    // if(existingSupportTicket){
-    //     return res.status(409).json({ message: `Support ticket ${existingSupportTicket.name} already exist.`})
-    // }
+    const existingSupportTicket = await SupportTicket.findOne({ name: _.startCase(_.toLower(name))});
+    if(existingSupportTicket){
+        return res.status(409).json({ status:"FAILED", message: `Support ticket ${existingSupportTicket.name} already exist.`})
+    }
     const createdSupportTicket = await SupportTicket.create({ ...req.body, createdBy: req.user._id, name:_.startCase(_.toLower(name)), description: descriptionFormater(description), slug: slugify(name)})
     return res.status(201).json({ status:"SUCCESS", message:"Support ticket created successfully.", data:createdSupportTicket})
   } catch (error) {

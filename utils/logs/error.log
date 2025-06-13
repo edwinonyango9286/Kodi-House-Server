@@ -1,0 +1,9 @@
+{"level":"error","message":"User.createPasswordResetToken is not a function","timestamp":"2025-06-11 12:04:27"}
+{"level":"error","message":"User.createPasswordResetToken is not a function","timestamp":"2025-06-11 12:04:48"}
+{"level":"error","message":"ENOENT: no such file or directory, open '/home/edu/Desktop/Projects/Kodi-House/Kodi-House-Server/mail-templates/reset-password-token-mail.ejs'","timestamp":"2025-06-11 12:05:19"}
+{"level":"error","message":"ENOENT: no such file or directory, open '/home/edu/Desktop/Projects/Kodi-House/Kodi-House-Server/mail-templates/reset-password-token-mail.ejs'","timestamp":"2025-06-11 12:06:03"}
+{"level":"error","message":"name is not defined","timestamp":"2025-06-12 06:35:11"}
+{"level":"error","message":"name is not defined","timestamp":"2025-06-12 06:36:52"}
+{"level":"error","timestamp":"2025-06-13 07:00:52"}
+{"code":"ENOENT","errno":-2,"level":"error","path":"/home/edu/Desktop/Projects/Kodi-House/Kodi-House-Server/mail-templates/system-user-account-creation","syscall":"open","timestamp":"2025-06-13 07:01:22"}
+{"_message":"User validation failed","errors":{"firstName":{"kind":"minlength","message":"Path `firstName` (`E`) is shorter than the minimum allowed length (2).","name":"ValidatorError","path":"firstName","properties":{"message":"Path `firstName` (`E`) is shorter than the minimum allowed length (2).","minlength":2,"path":"firstName","type":"minlength","value":"E"},"value":"E"}},"level":"error","message":"User validation failed: firstName: Path `firstName` (`E`) is shorter than the minimum allowed length (2).","name":"ValidationError","timestamp":"2025-06-13 09:19:27"}
