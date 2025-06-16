@@ -1,23 +1,23 @@
 const mongoose = require("mongoose");
 
-const categorySchema = new mongoose.Schema(
+const tagSchema = mongoose.Schema(
   {
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      requried: true,
     },
-    categoryName: {
+    tagName: {
       type: String,
-      required: true,
+      requried: true,
     },
-    description: {
-      type: String,
-      required: true,
+    description:{
+        type:String,
+        required:true,
     },
-    parentCategory: {
+    parentTag: {
       type: String,
-      required: true,
+      requried: true,
     },
     options: {
       type: [String],
@@ -25,10 +25,10 @@ const categorySchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      required:true,
+      requried: true,
       enum: ["Active", "Disabled"],
     },
-    updatedBy: {
+    deletedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
@@ -40,7 +40,7 @@ const categorySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    deletedBy: {
+    updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
@@ -50,4 +50,4 @@ const categorySchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("category", categorySchema);
+module.exports = mongoose.model("TagModel", tagSchema);

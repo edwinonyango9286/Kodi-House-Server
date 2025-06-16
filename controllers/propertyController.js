@@ -32,51 +32,18 @@ const updateAproperty = expressAsyncHandler(async (req, res, next) => {
     validateMongoDbId(_id);
     validateMongoDbId(propertyId);
 
-    const {
-      name,
-      category,
-      type,
-      numberOfUnits,
-      rent,
-      briefDescription,
-      googleMap,
-      images,
-      location,
-      currentStatus,
-    } = req.body;
+    const {name,category,type,numberOfUnits,rent,briefDescription, googleMap,images,location,currentStatus} = req.body;
     if (
-      !name ||
-      !category ||
-      !type ||
-      !numberOfUnits ||
-      !rent ||
-      !briefDescription ||
-      !googleMap ||
-      !images ||
-      !location ||
-      !currentStatus
-    ) {
-      return res.status(404).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
+      !name || !category ||!type || !numberOfUnits ||!rent ||!briefDescription ||!googleMap || !images ||!location || !currentStatus) {
+      return res.status(404).json({ status: "FAILED", message: "Please provide all the required fields."});
     }
     const updatedProperty = await Property.findOneAndUpdate(
-      {
-        _id: propertyId,
-        owner: _id,
-      },
-      {
-        ...req.body,
-        name: _.startCase(_.toLower(name)),
-        briefDescription: descriptionFormater(briefDescription),
-      },
+      {_id: propertyId, owner: _id,},
+      { ...req.body, name: _.startCase(_.toLower(name)), briefDescription: descriptionFormater(briefDescription),},
       { new: true, runValidators: true }
     );
     if (!updatedProperty) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Property not found." });
+      return res.status(404).json({ status: "FAILED", message: "Property not found." });
     }
     return res.status(200).json({ status: "SUCCESS", data: updatedProperty });
   } catch (error) {
@@ -298,12 +265,4 @@ const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-module.exports = {
-  addAProperty,
-  getApropertyById,
-  getAllProperties,
-  updateAproperty,
-  deleteAProperty,
-  asignPropertyToAtenant,
-  vacateATenantFromAProperty,
-};
+module.exports = { addAProperty, getApropertyById, getAllProperties,updateAproperty,deleteAProperty, asignPropertyToAtenant,vacateATenantFromAProperty,};

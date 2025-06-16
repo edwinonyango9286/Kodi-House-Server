@@ -48,11 +48,14 @@ const permissionRouter = require("./routes/permissionRoutes");
 const propertyTypeRouter = require("./routes/propertyTypeRoutes");
 const propertyTagRouter = require("./routes/propertyTagRoutes");
 const supportTicketRouter = require("./routes/supportTicketRoutes");
+const transactionRouter = require("./routes/transactionRoutes")
+const categoriesRouter = require("./routes/categoryRoutes")
+const tagRouter = require("./routes/tagRoutes")
 
 app.use(express.json({ limit: "50mb" }));
 
 const origins = [
-  process.env.ORIGIN_LOCALHOST_3000,
+  process.env.ORIGIN_LOCALHOST_5173,  //development port for landlord app
   process.env.ORIGIN_LOCALHOST_3001,
   process.env.ORIGIN_LOCALHOST_4000,
   process.env.ORIGIN_LOCALHOST_ADMIN,
@@ -107,5 +110,8 @@ app.use("/api/v1/permissions", permissionRouter);
 app.use("/api/v1/property-types", propertyTypeRouter);
 app.use("/api/v1/property-tags", propertyTagRouter);
 app.use("/api/v1/support-tickets", supportTicketRouter);
+app.use("/api/v1/transaction",transactionRouter )
+app.use("/api/v1/categories",categoriesRouter)
+app.use("/api/v1/tags",tagRouter)
 
 module.exports = app;
