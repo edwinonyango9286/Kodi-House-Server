@@ -97,6 +97,11 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
+    moveInDate:{
+      type:Date,
+      default:null
+    },
+
     units: [
       {
         type: mongoose.Schema.Types.ObjectId,

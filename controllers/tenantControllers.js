@@ -5,6 +5,39 @@ const validateMongoDbId = require("../utils/validateMongoDbId");
 const _ = require("lodash");
 const validatePhoneNumber = require("../utils/validatePhoneNumber");
 const emailValidator = require("email-validator");
+const { generateUserPassword } = require("../utils/generateUserPassword");
+const sendMail = require("../utils/sendMails");
+
+
+
+const createATenant = expressAsyncHandler(async(req,res,next)=>{
+  try {
+    const {firstName,secondName,email,phoneNumber}  = req.body
+    if(!firstName || !secondName || !email || !phoneNumber){
+      return res.status(400).json({ status:'FAILED', message:"Please provide all the required fields."})
+    }
+
+    const existingTenant = await User.findOne({ email });
+    if(existingTenant){
+      return res.status(409).json({ status:"FAILED", message:`Tenant with email ${existingTenant.email} already exist.` })
+    }
+
+     const userPassword = generateUserPassword();
+    
+    const createdTenant  = await User.create({ ...req.body, createdBy:req.user.id, password:userPassword, firstName:_.startCase(firstName), secondName:_.startCase(secondName) });
+    const data = { user:{ userName: `${firstName} ${secondName}`, email:createdTenant.email}, password:userPassword}
+    await sendMail({ email: createdTenant.email, subject: "Tenant account creation", template: "user-account-creation.ejs", data,});
+
+    if(createdTenant){
+      return res.status(201).json({ status:"SUCCESS", message:"Tenant created successfully. Tenant password has been sent to the registered email address.", data:createdTenant})
+    }
+
+  } catch (error) {
+    logger.error(error)
+    next(error)
+  }
+})
+
 
 // general update for a tenant by landlord => only update a tenant whose account is not deleted
 const updateTenantDetailsLandlord = expressAsyncHandler(
@@ -175,7 +208,7 @@ const activateTenant = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-// get all tenants related to a particular landlord=>gets all tenants whose account are not deleted
+// fetch all tenants related to a particular landlord => gets all tenants whose account are not deleted
 const getAllTenants = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
@@ -183,23 +216,11 @@ const getAllTenants = expressAsyncHandler(async (req, res, next) => {
     excludeFields.forEach((element) => delete queryObject[element]);
 
     let queryString = JSON.stringify(queryObject);
-    queryString = queryString.replace(
-      /\b(gte|gt|lte|lt)\b/g,
-      (match) => `$${match}`
-    );
+    queryString = queryString.replace(/\b(gte|gt|lte|lt)\b/g,(match) => `$${match}`);
 
     // get only tenants who are not deleted and who are related to a particular logged in landlord
-    let query = User.find({
-      ...JSON.parse(queryString),
-      isDeleted: false,
-      deletedAt: null,
-      landlord: req.landlord._id,
-    })
-      .populate({ path: "createdBy", select: "userName" })
-      // a tenant can have more than one property assigned to them
-      .populate({ path: "properties", select: "name" })
-      //  a tenant can have more that one unit assigned to them
-      .populate({ path: "units", select: "unitNumber" });
+    let query = User.find({...JSON.parse(queryString), isDeleted: false, deletedAt: null, createdBy: req.user._id,  }).populate({ path: "createdBy", select: "userName" }).populate({ path: "properties", select: "name" }).populate({ path: "units", select: "unitNumber" });
+
     // sorting
     if (req.query.sort) {
       const sortBy = req.query.sort.split(",").join(" ");
@@ -227,6 +248,9 @@ const getAllTenants = expressAsyncHandler(async (req, res, next) => {
     next(error);
   }
 });
+
+
+
 
 //Delete a tenant => landlord
 const deleteTenantLandlord = expressAsyncHandler(async (req, res, next) => {
@@ -284,12 +308,4 @@ const deleteTenantTenant = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-module.exports = {
-  updateTenantDetailsLandlord,
-  getAllTenants,
-  disableTenant,
-  activateTenant,
-  updateTenantDetailsTenant,
-  deleteTenantLandlord,
-  deleteTenantTenant,
-};
+module.exports = { createATenant, updateTenantDetailsLandlord, getAllTenants, disableTenant, activateTenant, updateTenantDetailsTenant, deleteTenantLandlord, deleteTenantTenant };

@@ -5,6 +5,7 @@ const emailValidator = require("email-validator");
 const _ = require("lodash");
 const User = require("../models/userModel");
 const sendMail = require("../utils/sendMails");
+const { generateUserPassword } = require("../utils/generateUserPassword");
 
 
 // get user profile
@@ -75,43 +76,6 @@ const listUsersByUserType =  expressAsyncHandler(async(req,res, next)=>{
 
 
 
-// export interface  IAddUserPayload {
-//   role:string,
-//   firstName:string,
-//   lastName:string,
-//   email:string,
-//   status:string,
-//   phoneNumber:string,
-//   description:string
-// }
-
-const  generateUserPassword = () => {
-  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const numbers = '0123456789';
-  const specials = '@$!%*?&';
-  
-  // Ensure we have at least one of each required character type
-  const randomLower = lowercase[Math.floor(Math.random() * lowercase.length)];
-  const randomUpper = uppercase[Math.floor(Math.random() * uppercase.length)];
-  const randomNumber = numbers[Math.floor(Math.random() * numbers.length)];
-  const randomSpecial = specials[Math.floor(Math.random() * specials.length)];
-  
-  // Combine all characters and shuffle
-  const allChars = lowercase + uppercase + numbers + specials;
-  let password = randomLower + randomUpper + randomNumber + randomSpecial;
-  
-  // Add random characters to reach minimum length (8)
-  for (let i = 4; i < 12; i++) { // Generates passwords between 8-12 chars
-    password += allChars[Math.floor(Math.random() * allChars.length)];
-  }
-  
-  // Shuffle the password to mix the required characters
-  return password.split('').sort(() => Math.random() - 0.5).join('');
-}
-
-
-
 const createSystemUser  = expressAsyncHandler(async (req, res, next) => {
   try {
     const { role, firstName, lastName, email, status, phoneNumber, description } = req.body;
@@ -133,9 +97,9 @@ const createSystemUser  = expressAsyncHandler(async (req, res, next) => {
 
     const createdUser  = await User.create({...req.body, password: userPassword, createdBy:req.user._id, firstName: _.startCase(firstName) , lastName:_.startCase(lastName)});
     const data = {user: {userName: `${firstName} ${lastName}`, email: createdUser.email,}, password: userPassword,};
-    await sendMail({ email: createdUser.email, subject: "User account creation", template: "system-user-account-creation.ejs", data,});
+    await sendMail({ email: createdUser.email, subject: "User account creation", template: "user-account-creation.ejs", data,});
 
-    return res.status(201).json({status: "SUCCESS", message: "User  has been successfully created. The password has been sent to the registered email address.",});
+    return res.status(201).json({status: "SUCCESS", message: "User  has been successfully created. User password has been sent to the registered email address.",});
   } catch (error) {
     logger.error(error);
     next(error);

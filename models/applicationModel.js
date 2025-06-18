@@ -3,17 +3,17 @@ const mongoose = require("mongoose");
 
 const applicationsSchema = new mongoose.Schema(
   {
-    // createdBy: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "User",
-    //   required: true,
-    //   validate: {
-    //     validator: (id) => {
-    //       return mongoose.Types.ObjectId.isValid(id);
-    //     },
-    //     message: (props) => `${props.value} is not a valid objectId`,
-    //   },
-    // },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
 
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,

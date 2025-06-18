@@ -29,11 +29,11 @@ const InvoiceSchema = new mongoose.Schema(
       required: true,
       enum: ["Cash", "Mpesa", "Airtel Money", "Bank Transfer"],
     },
-    tags: {
+    tag: {
       type: String,
       required: true,
     },
-    recurringInvoice: {
+    recurringStatus: {
       type: String,
       required: true,
       enum: [
