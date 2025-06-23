@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.post("/create",verifyUserToken,checkUserRole(["Admin"]), createSystemUser)
 router.get("/user-profile", verifyUserToken, me);
-router.patch("/update-landlord-info", verifyUserToken, updateUserProfile );
+router.patch("/update-user-profile",verifyUserToken,updateUserProfile)
 router.get("/list-users", verifyUserToken, checkUserRole(["Admin","Landlord"]),listUsers);
 router.get("/list-landlord-users", verifyUserToken, checkUserRole("Landlord"), listLandlordUsers)
 router.get("/list-system-users", verifyUserToken, checkUserRole(["Admin"]), listSystemUsers)

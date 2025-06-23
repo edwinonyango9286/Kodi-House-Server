@@ -187,6 +187,8 @@ const vacateATenantFromAProperty = expressAsyncHandler(
 
 
 
+
+
 // delete a property
 const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
   try {

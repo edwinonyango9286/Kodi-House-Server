@@ -25,35 +25,30 @@ const me = expressAsyncHandler(async (req, res, next) => {
 const updateUserProfile = expressAsyncHandler(
   async (req, res, next) => {
     try {
-      const {firstName,secondName,email,businessName,idNumber,lastName,address,phoneNumber,} = req.body;
+      const {firstName,secondName,email,idNumber, lastName, address,phoneNumber, businessName} = req.body;
       // validate required fields
-      if (!firstName || !secondName || !email ||!phoneNumber || !businessName || !idNumber || !address ) {
-        return res.status(400).json({status: "FAILED", message: "Please provide all the required fields.",});
+      if (!firstName || !secondName || !email || !phoneNumber  || !idNumber || !address ) {
+        return res.status(400).json({status: "FAILED", message: "Please provide all the required fields......",});
       }
       validatePhoneNumber(phoneNumber);
       if (!emailValidator.validate(email)) {
         return res.status(400).json({ status: "SUCCESS",message: "Please provide a valid email address.",});
       }
-      const updatedUser = await User.findOneAndUpdate(
-        {_id: req.user._id,},
-        {...req.body, firstName: _.startCase(_.toLower(firstName)),
-          secondName: _.startCase(_.toLower(secondName)),
-          lastName: _.startCase(_.toLower(lastName)),
-          businessName: _.startCase(_.toLower(businessName)),
-        },
-        { new: true, runValidators: true }
-      );
+
+      const user = await User.findById({_id:req.user._id})
+
+      const updatedUser = await User.findOneAndUpdate({_id: req.user._id,}, {...req.body, firstName: _.startCase(_.toLower(firstName)), secondName: _.startCase(_.toLower(secondName)), lastName: _.startCase(_.toLower(lastName)), businessName: _.startCase(_.toLower(businessName))},{ new: true, runValidators: true });
       if (!updatedUser) {
         return res.status(404).json({ status: "FAILED", message: "User not found." });
       }
-       return res.status(200).json({ status: "SUCCESS", message: "Profile updated successfully.",data: updatedUser,
-      });
+       return res.status(200).json({ status: "SUCCESS", message: "Profile updated successfully.",data: updatedUser });
     } catch (error) {
       logger.error(error);
       next(error);
     }
   }
 );
+
 
 
 

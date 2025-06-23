@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema(
     businessName: {
       type: String,
       trim: true,
-      minlength: 2,
+      // minlength: 2,
       maxlength: 50,
     },
     phoneNumber: {
