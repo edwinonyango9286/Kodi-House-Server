@@ -3,6 +3,7 @@ const expressAsyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const _ = require("lodash");
 const { descriptionFormater } = require("../utils/stringFormaters");
+const  User = require("../models/userModel")
 
 // add a new property
 const addAProperty = expressAsyncHandler(async (req, res, next) => {
@@ -12,17 +13,19 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
     const {name,category,type,numberOfUnits,rent,briefDescription,googleMap,images,location,currentStatus} = req.body;
     if ( !name || !category || !type || !numberOfUnits || !rent || !briefDescription || !googleMap || !images || !location || !currentStatus) {
       return res.status(404).json({status: "FAILED",message: "Please provide all the required fields.",})}
-    // check for existing property by name
-    const existingProperty = await Property.findOne({ owner: _id, name: _.startCase(_.toLower(name)), isDeleted: false, deletedAt: null});
+
+    // check for existing property by name for that particular landlord
+    const existingProperty = await Property.findOne({ createdBy: _id, name: _.startCase(_.toLower(name)), isDeleted: false, deletedAt: null});
     if (existingProperty) {
       return res.status(409).json({  status: "FAILED",  message: `Property ${existingProperty.name} already exist.`,})
     }
-    const newProperty = await Property.create({...req.body,name: _.startCase(_.toLower(name)),briefDescription: descriptionFormater(briefDescription),owner: _id,});
+    const newProperty = await Property.create({...req.body,name: _.startCase(_.toLower(name)),briefDescription: descriptionFormater(briefDescription),createdBy: _id,});
     return res.status(201).json({status: "SUCCESS",message: "Property created successfully.",data: newProperty});
   } catch (error) {
     next(error);
   }
 });
+
 
 // update a property
 const updateAproperty = expressAsyncHandler(async (req, res, next) => {
@@ -33,19 +36,14 @@ const updateAproperty = expressAsyncHandler(async (req, res, next) => {
     validateMongoDbId(propertyId);
 
     const {name,category,type,numberOfUnits,rent,briefDescription, googleMap,images,location,currentStatus} = req.body;
-    if (
-      !name || !category ||!type || !numberOfUnits ||!rent ||!briefDescription ||!googleMap || !images ||!location || !currentStatus) {
+    if ( !name || !category ||!type || !numberOfUnits ||!rent || !briefDescription || !googleMap || !images || !location || !currentStatus) {
       return res.status(404).json({ status: "FAILED", message: "Please provide all the required fields."});
     }
-    const updatedProperty = await Property.findOneAndUpdate(
-      {_id: propertyId, owner: _id,},
-      { ...req.body, name: _.startCase(_.toLower(name)), briefDescription: descriptionFormater(briefDescription),},
-      { new: true, runValidators: true }
-    );
+    const updatedProperty = await Property.findOneAndUpdate( {_id: propertyId, createdBy: _id,}, { ...req.body, name: _.startCase(_.toLower(name)), briefDescription: descriptionFormater(briefDescription)},{ new: true, runValidators: true });
     if (!updatedProperty) {
       return res.status(404).json({ status: "FAILED", message: "Property not found." });
     }
-    return res.status(200).json({ status: "SUCCESS", data: updatedProperty });
+    return res.status(200).json({ status: "SUCCESS", message:`Property ${updatedProperty.name} updated successfully`, data: updatedProperty });
   } catch (error) {
     next(error);
   }
@@ -55,31 +53,9 @@ const getApropertyById = expressAsyncHandler(async (req, res, next) => {
   try {
     const { propertyId } = req.params;
     validateMongoDbId(propertyId);
-    // Build the query object
-    const query = {
-      _id: propertyId,
-      isDeleted: false,
-      deletedAt: null,
-    };
-
-    // If the request is from a owner, add the owner check
-    if (req.user && req.user._id) {
-      query.owner = req.user._id;
-    }
-
-    const property = await Property.findOne(query)
-      .populate({ path: "owner", select: "userName" })
-      .populate({ path: "type", select: "name" })
-      .populate({ path: "category", select: "name" })
-      .populate({ path: "currentOccupant", select: "firstName secondName" })
-      .populate({ path: "users", select: "firstName secondName" });
-
-    if (!property) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Property not found." });
-    }
-
+    const query = { _id: propertyId, isDeleted: false, deletedAt: null};
+    const property = await Property.findOne(query).populate({ path: "createdBy", select: "userName" }).populate({ path: "type", select: "name" }).populate({ path: "category", select: "name" }).populate({ path: "currentOccupant", select: "firstName secondName" }).populate({ path: "users", select: "firstName secondName" });
+    if (!property) { return res.status(404).json({ status: "FAILED", message: "Property not found." })}
     return res.status(200).json({ status: "SUCCESS", data: property });
   } catch (error) {
     next(error);
@@ -89,32 +65,45 @@ const getApropertyById = expressAsyncHandler(async (req, res, next) => {
 const getAllProperties = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
-    const excludeFields = ["page", "sort", "limit", "offset", "fields"];
+    const excludeFields = ["page", "sort", "limit", "offset", "fields", "search"];
     excludeFields.forEach((el) => delete queryObject[el]);
 
     let queryStr = JSON.stringify(queryObject);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    let query = Property.find({...JSON.parse(queryStr),isDeleted: false,deletedAt: null,})
-    .populate({path: "createdBy",select: "userName",populate: { path: "role",select: "name"}})
-    .populate("currentOccupant", "firstName secondName")
-    .populate("type", "name")
-    .populate("category", "name");
+    const userMakingRequest = await User.findOne({ _id: req?.user?._id }).populate("role", "name");
 
-    if (req.user?.role?.name === "Landlord") {
-      query = query.where("createdBy").equals(req.user._id);
+    let query;
+    let baseQuery = JSON.parse(queryStr);
+
+    // Add search functionality
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      baseQuery.$or = [ { name: searchRegex },{ 'createdBy.userName': searchRegex }, { type: searchRegex },{ category: searchRegex },{currentStatus: searchRegex}];
     }
 
+    if (userMakingRequest && userMakingRequest.role.name === "Admin") {
+      query = Property.find(baseQuery).populate({ path: "createdBy", select: "userName", populate: { path: "role", select: "name" } }).populate("currentOccupant", "firstName secondName");
+    } else if (userMakingRequest && userMakingRequest.role.name === "Landlord") { query = Property.find({ ...baseQuery, isDeleted: false, deletedAt: null, createdBy: req?.user?._id
+      })
+      .populate({ path: "createdBy", select: "userName", populate: { path: "role", select: "name" } }).populate("currentOccupant", "firstName secondName");
+    } else {
+      query = Property.find({...baseQuery, isDeleted: false, deletedAt: null, currentOccupant: null }).populate({ path: "createdBy", select: "userName", populate: { path: "role", select: "name" } }).populate("currentOccupant", "firstName secondName");
+    }
+
+    // Rest of your existing code...
     if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
     if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
     
     const limit = parseInt(req.query.limit) || 10;
-    const page = parseInt(req.query.page) || 1;
-    const skip = (page - 1) * limit;
-    
-    const properties = await query.skip(skip).limit(limit);
-    
-   return res.status(200).json({status: "SUCCESS", message:"Properties listed successfully.", data: properties,});
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    query = query.skip(offset).limit(limit);
+
+    const properties = await query;
+    const totalCount = await Property.countDocuments(query.getFilter()); 
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return res.status(200).json({ status: "SUCCESS",  message: "Properties listed successfully.",  data: properties, totalCount,  totalPages,  limit,  offset  });
   } catch (error) {
     next(error);
   }
@@ -129,43 +118,26 @@ const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
     const { tenantId } = req.body;
     validateMongoDbId(propertyId);
     validateMongoDbId(tenantId);
-    const tenant = await Tenant.findOne({
-      _id: tenantId,
-      owner: req.user._id,
-      isDeleted: false,
-      deletedAt: null,
-    });
+    const tenant = await User.findOne({_id: tenantId, createdBy: req.user._id, isDeleted: false, deletedAt: null });
 
     if (!tenant) {
       return res.status(404).json({ status: "FAILED", message: "Tenant not found." });
     }
 
     // check if a property is already assigned to another tenant
-    const property = await Property.findOne({
-      _id: propertyId,
-      isDeleted: false,
-      deletedAt: null,
-    });
+    const property = await Property.findOne({ _id: propertyId, createdBy:req.user._id, isDeleted: false, deletedAt: null ,});
 
     if (!property) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Property not found." });
+      return res.status(404).json({ status: "FAILED", message: "Property not found." });
     }
 
     // ensures that only properties that are single unit are asigned to a single tenant.
-    if (property.type.name === "Multi Unit") {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "A multi unit property cannot be assigned to a single tenant",
-      });
+    if (property.type === "Multi Unit") {
+      return res.status(400).json({ status: "FAILED", message: "A multi unit property cannot be assigned to a single tenant" });
     }
 
     if (property.currentOccupant && property.currentStatus === "Occupied") {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Property already assigned to a tenant.",
-      });
+      return res.status(400).json({ status: "FAILED", message: "Property already assigned to a tenant.", });
     }
     // if property doesn't have  and tenant occupant and status is vacant asign the property to the tenant
     property.currentOccupant = tenantId;
@@ -177,12 +149,7 @@ const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
     tenant.properties.push(propertyId);
     const assignedTenant = await tenant.save();
 
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: `${property.name} has been assigned to  ${tenant.firstName} ${tenant.secondName}`,
-      assignedProperty,
-      assignedTenant,
-    });
+    return res.status(200).json({ status: "SUCCESS", message: `${property.name} has been assigned to  ${tenant.firstName} ${tenant.secondName}`, assignedProperty, assignedTenant });
   } catch (error) {
     next(error);
   }
@@ -196,24 +163,13 @@ const vacateATenantFromAProperty = expressAsyncHandler(
       validateMongoDbId(propertyId);
 
       // find property
-      const property = await Property.findOne({
-        _id: propertyId,
-        owner: req.user._id,
-        isDeleted: false,
-        deletedAt: null,
-      });
+      const property = await Property.findOne({_id: propertyId, createdBy: req.user._id, isDeleted: false, deletedAt: null, });
       if (!property) {
-        return res
-          .status(404)
-          .json({ status: "Failed", message: "Property not found." });
+        return res.status(404).json({ status: "Failed", message: "Property not found." });
       }
 
       // find tenant
-      const tenant = await Tenant.findOne({
-        _id: property.currentOccupant,
-        owner: req.user._id,
-        properties: { $in: [propertyId] },
-      });
+      const tenant = await User.findOne({_id: property.currentOccupant, createdBy: req.user._id, properties: { $in: [propertyId] } });
       // remove property id from
       tenant.properties.pull(propertyId);
       const vacatedTenant = await tenant.save();
@@ -222,47 +178,32 @@ const vacateATenantFromAProperty = expressAsyncHandler(
       property.currentStatus = "Vacant";
       const vacatedProperty = await property.save();
 
-      return res.status(200).json({
-        status: "SUCCESS",
-        message: `${vacatedTenant.firstName} ${vacatedTenant.secondName} has been vacated from  ${property.name}`,
-        vacatedTenant,
-        vacatedProperty,
-      });
+      return res.status(200).json({ status: "SUCCESS", message: `${vacatedTenant.firstName} ${vacatedTenant.secondName} has been vacated from  ${property.name}`, vacatedTenant, vacatedProperty });
     } catch (error) {
       next(error);
     }
   }
 );
 
+
+
 // delete a property
 const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { propertyId } = req.params;
+    console.log(propertyId,"=>propertyId")
     validateMongoDbId(propertyId);
-    const deletedProperty = await Property.findOneAndUpdate(
-      {
-        _id: propertyId,
-        owner: req.user._id,
-        isDeleted: false,
-        deletedAt: null,
-      },
-      { isDeleted: true, deletedAt: Date.now() },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    
+    const deletedProperty = await Property.findOneAndUpdate({ _id: propertyId, createdBy: req.user._id, isDeleted: false,  deletedAt: null }, { isDeleted: true, deletedAt: Date.now() }, {  new: true, runValidators: true, });
+  
     if (!deletedProperty) {
-      return res.status({ status: "SUCCESS", message: "Property not found." });
+      return res.status(404).json({ status: "SUCCESS", message: "Property not found." });
     }
-    return res.status(200).json({
-      status: "SUCCESS",
-      data: deletedProperty,
-      message: "Property deleted successfully.",
-    });
+    return res.status(200).json({ status: "SUCCESS", data: deletedProperty, message: "Property deleted successfully.", });
   } catch (error) {
     next(error);
   }
 });
+
 
 module.exports = { addAProperty, getApropertyById, getAllProperties,updateAproperty,deleteAProperty, asignPropertyToAtenant,vacateATenantFromAProperty,};

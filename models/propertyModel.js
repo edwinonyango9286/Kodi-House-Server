@@ -26,21 +26,19 @@ const propertySchema = new mongoose.Schema(
     },
 
     type: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "PropertyType",
+      type: String,
       required: true,
-      validate: {
-        validator: function (id) {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props.value} is not a valid objectId`,
-      },
+    },
+
+    category: {
+      type: String,
+      required: true,
     },
 
     // current occupant should only exist for a single unit property
     currentOccupant: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Tenant",
+      ref: "User",
       default: null,
       validate: {
         validator: (id) => {
@@ -55,17 +53,6 @@ const propertySchema = new mongoose.Schema(
       trim: true,
       maxlength: 50,
       minlength: 2,
-    },
-    category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "PropertyCategory",
-      required: true,
-      validate: {
-        validator: (id) => {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props.value} is not a valid objectId`,
-      },
     },
 
     users: [

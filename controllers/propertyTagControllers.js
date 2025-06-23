@@ -60,9 +60,7 @@ const getAllPropertyTags = expressAsyncHandler(async(req,res,next)=>{
         let query = PropertyTag.find({ ...queryObject, isDeleted:false, deletedAt: null}).populate({ path:"createdBy" , select:"userName"}).populate({ path:"updatedBy", select:"userName"})
 
           // Sorting
-      if (req.query.sort) {
-        const sortBy = req.query.sort.split(",").join(" ");
-        query = query.sort(sortBy);
+      if (req.query.sort) { const sortBy = req.query.sort.split(",").join(" "); query = query.sort(sortBy);
       } else {
         query = query.sort("-createdAt");
       }
@@ -86,6 +84,7 @@ const getAllPropertyTags = expressAsyncHandler(async(req,res,next)=>{
         next(error)
     }
 })
+
 
 const deleteAPropertyTag = expressAsyncHandler(async(req,res,next)=>{
     try {

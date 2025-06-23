@@ -6,6 +6,7 @@ const _ = require("lodash");
 const User = require("../models/userModel");
 const sendMail = require("../utils/sendMails");
 const { generateUserPassword } = require("../utils/generateUserPassword");
+const Role = require("../models/roleModel")
 
 
 // get user profile
@@ -55,23 +56,71 @@ const updateUserProfile = expressAsyncHandler(
 );
 
 
-// list all users by user types
-// this function gets all users by passing the userType in the params
-const listUsersByUserType =  expressAsyncHandler(async(req,res, next)=>{
+
+const listUsers = expressAsyncHandler(async (req, res, next) => {
   try {
-    const {userType} = req.params;
-    console.log(userType,"=>userType")
-    const validUserTypes = ["Admin","Landlord","Tenant","User"];
-    if(!validUserTypes.includes(userType)){
-      return res.status(400).json({status:"FAILED", message:"Invalid user type provided."})
+    const queryObject = { ...req.query };
+    const excludeFields = ["page", "sort", "limit", "offset", "fields"];
+    excludeFields.forEach((el) => delete queryObject[el]);
+    
+    const roleFilter = { }
+    const userGroupRole =  await Role.findOne({ name: _.startCase(_.toLower(req.query.role))});
+    console.log(userGroupRole.name,"=>userRole")
+
+    if(userGroupRole){
+      roleFilter.role = userGroupRole._id
+      delete queryObject.role
     }
-    const users = await User.find({"role.name": userType})
-    if(users){
-    return res.status(200).json({ status:"SUCCESS", message:"Users listed successfully", data:users})
-    }
+
+    let queryStr = JSON.stringify(queryObject);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+
+    const userMakingRequest =  await User.findOne({ _id:req.user._id}).populate("role", "name");
+    console.log(userMakingRequest.role.name,"=>userMakingRequest");
+
+
+     let query;
+
+     if( userMakingRequest && userMakingRequest.role.name ==="Landlord"){
+      query = User.find({...JSON.parse(queryStr), ...roleFilter, isDeleted: false, deletedAt: null, createdBy:req.user._id}).populate("role","name")
+     } else {
+      query = User.find({...JSON.parse(queryStr), ...roleFilter, isDeleted: false, deletedAt: null,}).populate("role","name")
+     }
+     
+    if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
+    if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
+    
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0) 
+    query = query.skip(offset).limit(limit);
+
+    
+    const users = await query
+    const totalCount = users.length;
+    const totalPages = Math.ceil(totalCount/limit)
+
+  
+   return res.status(200).json({status: "SUCCESS", message:"Properties listed successfully.", data: users, totalCount,totalPages,limit, offset });
   } catch (error) {
+    next(error);
+  }
+});
+
+// list landlord users
+
+const listLandlordUsers =  expressAsyncHandler(async (req,res,next)=>{
+  try {
+
+    const roleFilter = {};
+    const userGroupRole = await Role.findOne();
+
+    const landlordUsers =  await User.find({ createdBy:req.user._id, isDeleted:false,deletedAt:null });
+    return res.status(200).json({ status:"SUCCESS", message:"Users listed successfully.", data:landlordUsers})
+  } catch (error) {
+    logger.error(error)
     next(error)
   }
+  
 })
 
 
@@ -122,4 +171,4 @@ const listSystemUsers =  expressAsyncHandler( async(req,res,next)=>{
 
 
 
-module.exports = {me,updateUserProfile, listUsersByUserType , createSystemUser, listSystemUsers };
+module.exports = {me,updateUserProfile, listUsers, createSystemUser, listSystemUsers , listLandlordUsers};

@@ -1,16 +1,14 @@
 const express = require("express");
-
-const {addAProperty,updateAproperty,asignPropertyToAtenant,getAllProperties,getAPropertyByIdUsers,deleteAProperty,vacateATenantFromAProperty,getApropertyById} = require("../controllers/propertyController");
+const {addAProperty,updateAproperty,asignPropertyToAtenant,getAllProperties,deleteAProperty,vacateATenantFromAProperty,getApropertyById} = require("../controllers/propertyController");
 const { verifyUserToken, checkUserRole } = require("../middlewares/authMiddleware");
 const router = express.Router();
 
 router.post("/property",verifyUserToken, checkUserRole(["Landlord"]),addAProperty);
 router.get("/property/:propertyId",getApropertyById);
-router.get("/properties", verifyUserToken,checkUserRole(["Admin","Landlord"]),getAllProperties);
+router.get("/properties", getAllProperties);
 
-router.put("/update_a_property/:propertyId",updateAproperty);
-router.patch("/assign_a_property_to_a_tenant/:propertyId",asignPropertyToAtenant);
-router.patch("/delete_a_property/:propertyId",deleteAProperty);
-router.patch("/assign_property_to_a_tenant/:propertyId",asignPropertyToAtenant);
-router.patch("/vacate_tenant_from_a_property/:propertyId",vacateATenantFromAProperty);
+router.put("/update-property/:propertyId",verifyUserToken, checkUserRole(["Landlord"]), updateAproperty);
+router.patch("/delete_a_property/:propertyId", verifyUserToken, checkUserRole(["Landlord","Admin"]), deleteAProperty);
+router.patch("/assign_property_to_a_tenant/:propertyId", verifyUserToken, checkUserRole(["Landlord"]), asignPropertyToAtenant);
+router.patch("/vacate_tenant_from_a_property/:propertyId",verifyUserToken, checkUserRole("Landlord"), vacateATenantFromAProperty);
 module.exports = router;
