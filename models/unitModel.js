@@ -46,16 +46,10 @@ const unitSchema = new mongoose.Schema(
       },
     },
     category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "UnitCategory",
+      type: String,
       required: true,
-      validate: {
-        validator: (id) => {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props} is not a valid objectId`,
-      },
     },
+
     rentPerMonth: {
       type: Number,
       required: true,
@@ -64,17 +58,18 @@ const unitSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    tags: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Tag",
-      required: true,
-      validate: {
-        validator: function (id) {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props} is not a valid objectId`,
-      },
+    currentStatus:{
+      type:String,
+      enum:["Occupied","Vacant"],
+      default:"Vacant"
     },
+    tags: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Tag",
+      },
+    ],
+
     shortDescription: {
       type: String,
       required: true,

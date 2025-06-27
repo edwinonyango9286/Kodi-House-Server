@@ -10,13 +10,14 @@ const createATransaction = expressAsyncHandler( async(req,res,next) => {
             return res.status(400).json({ status:"FAILED", message:"Please provide all the required fields." })
         }
         const createdTransaction = await Transaction.create({...req.body, transactionDate:Date.now(),transactionBy:req.user._id});
-        return res.status(201).json({ status:"SUCCESS", message:"Transaction successfylly" })
+        return res.status(201).json({ status:"SUCCESS", message:"Transaction successfylly", data:createdTransaction })
 
     } catch (error) {
         logger.error(error)
         next(error)
     }
 })
+
 
 const listAllTransactions =  expressAsyncHandler( async (req,res,next)=>{
     try {

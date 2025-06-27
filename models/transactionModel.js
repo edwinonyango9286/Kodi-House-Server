@@ -29,35 +29,40 @@ const transactionSchema = mongoose.Schema(
     transactionDate: {
       type: Date,
       required: true,
-      default:Date.now()
+      default: Date.now(),
     },
 
     status: {
       type: String,
       enum: ["pending", "completed", "failed", "refunded"],
     },
-    isDeleted:{
-        type:Boolean,
-        default:false
+    isDeleted: {
+      type: Boolean,
+      default: false,
     },
-    deletedBy:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"User",
-        validate:{
-            validator:(id)=>{
-                return mongoose.Types.ObjectId.isValid(id)
-            },
-            message:(props)=>`${props} is not a valid object id`
-        }
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props} is not a valid object id`,
+      },
     },
-    deletedAt:{
-       type:Date,
-       default:null
+    deletedAt: {
+      type: Date,
+      default: null,
     },
-    updatedBy:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"User"
-    }
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
+    updateAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

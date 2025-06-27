@@ -79,18 +79,16 @@ const getAllProperties = expressAsyncHandler(async (req, res, next) => {
     // Add search functionality
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
-      baseQuery.$or = [ { name: searchRegex },{ 'createdBy.userName': searchRegex }, { type: searchRegex },{ category: searchRegex },{currentStatus: searchRegex}];
+      baseQuery.$or = [ { name: searchRegex } , { type: searchRegex },{ category: searchRegex },{currentStatus: searchRegex}];
     }
 
-    if (userMakingRequest && userMakingRequest.role.name === "Admin") {
-      query = Property.find(baseQuery).populate({ path: "createdBy", select: "userName", populate: { path: "role", select: "name" } }).populate("currentOccupant", "firstName secondName");
-    } else if (userMakingRequest && userMakingRequest.role.name === "Landlord") { query = Property.find({ ...baseQuery, isDeleted: false, deletedAt: null, createdBy: req?.user?._id
-      })
-      .populate({ path: "createdBy", select: "userName", populate: { path: "role", select: "name" } }).populate("currentOccupant", "firstName secondName");
+    if( userMakingRequest && userMakingRequest.role.name === "Admin") {
+      query = Property.find({...baseQuery, isDeleted:false, deletedAt:null}).populate({ path: "createdBy", select: "userName" }).populate("currentOccupant", "firstName secondName");
+    } else if ( userMakingRequest && userMakingRequest.role.name === "Landlord") { query = Property.find({ ...baseQuery, isDeleted: false, deletedAt: null, createdBy: req?.user?._id}).populate("currentOccupant", "firstName secondName");
     } else {
-      query = Property.find({...baseQuery, isDeleted: false, deletedAt: null, currentOccupant: null }).populate({ path: "createdBy", select: "userName", populate: { path: "role", select: "name" } }).populate("currentOccupant", "firstName secondName");
+      query = Property.find({...baseQuery, isDeleted: false, deletedAt: null, currentOccupant: null }).populate({ path: "createdBy", select: "userName" });
     }
-
+    
     // Rest of your existing code...
     if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
     if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
@@ -186,10 +184,7 @@ const vacateATenantFromAProperty = expressAsyncHandler(
 );
 
 
-
-
-
-// delete a property
+// only landlords can delete properties
 const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { propertyId } = req.params;
@@ -197,10 +192,7 @@ const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
     validateMongoDbId(propertyId);
     
     const deletedProperty = await Property.findOneAndUpdate({ _id: propertyId, createdBy: req.user._id, isDeleted: false,  deletedAt: null }, { isDeleted: true, deletedAt: Date.now() }, {  new: true, runValidators: true, });
-  
-    if (!deletedProperty) {
-      return res.status(404).json({ status: "SUCCESS", message: "Property not found." });
-    }
+    if (!deletedProperty) { return res.status(404).json({ status: "SUCCESS", message: "Property not found." }) }
     return res.status(200).json({ status: "SUCCESS", data: deletedProperty, message: "Property deleted successfully.", });
   } catch (error) {
     next(error);
@@ -208,4 +200,4 @@ const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
 });
 
 
-module.exports = { addAProperty, getApropertyById, getAllProperties,updateAproperty,deleteAProperty, asignPropertyToAtenant,vacateATenantFromAProperty,};
+module.exports = { addAProperty, getApropertyById, getAllProperties,updateAproperty,deleteAProperty, asignPropertyToAtenant,vacateATenantFromAProperty};

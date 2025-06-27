@@ -1,57 +1,57 @@
 const expressAsyncHandler = require("express-async-handler");
-const {
-  cloudinaryUploadImage,
-  cloudinaryDeleteImage,
-} = require("../utils/cloudinary");
-const fs = require("fs");
+const { cloudinaryUploadImage, cloudinaryDeleteImage } = require("../utils/cloudinary");
+const logger = require("../utils/logger");
+const sharp = require("sharp");
 
-const uploadImages = expressAsyncHandler(async (req, res) => {
+const uploadImages = expressAsyncHandler(async (req, res, next) => {
   try {
-    const uploader = (path) => cloudinaryUploadImage(path, "kodihouse");
-    const urls = [];
-    const files = req.files;
-
-    for (const file of files) {
-      const { path } = file;
-      const newpath = await uploader(path);
-      urls.push(newpath);
-      fs.unlinkSync(path);
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ status: "FAILED", message: "No files selected for upload." });
     }
-    const images = urls.map((file) => {
-      return file;
+
+    const uploadPromises = req.files.map(async (file) => {
+      try {
+        const resizedBuffer = await sharp(file.buffer)
+          .resize(300, 300)
+          .toFormat("jpeg")
+          .jpeg({ quality: 90 })
+          .toBuffer(); 
+        const result = await cloudinaryUploadImage(resizedBuffer, "kodihouse");
+        return result;
+      } catch (err) {
+        logger.error(`Error processing ${file.originalname}:`, err);
+        throw err;
+      }
     });
-    return res.status(200).json({ status: "SUCCESS", data: images });
+
+    const results = await Promise.all(uploadPromises);
+    
+    return res.status(200).json({ status: "SUCCESS", message: "Images uploaded successfully.", data: results });
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    logger.error("Upload process failed:", error);
+    next(error);
   }
 });
 
-const deleteImages = expressAsyncHandler(async (req, res) => {
+
+
+const deleteImages = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { piblicId } = req.params;
-    if (!piblicId) {
-      return res
-        .status(400)
-        .json({ status: "FAILED", message: "Please provide image Id." });
+    const { publicId } = req.params; 
+    if (!publicId) {
+      return res.status(400).json({ status: "FAILED", message: "Please provide image ID." });
     }
 
-    const deleted = await cloudinaryDeleteImage(piblicId);
+    const deleted = await cloudinaryDeleteImage(publicId);
     if (deleted.result === "ok") {
-      return res.json({
-        status: "SUCCESS",
-        message: "Image deleted successfully.",
-      });
+      return res.json({ status: "SUCCESS", message: "Image deleted successfully." });
     } else {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Image not found." });
+     return  res.status(404).json({ status: "FAILED", message: "Image not found." });
     }
   } catch (error) {
-    return res.status(500).json({ status: "FAILED", message: error.message });
+    logger.error("Delete error:", error);
+    next(error);
   }
 });
 
-module.exports = {
-  uploadImages,
-  deleteImages,
-};
+module.exports = { uploadImages, deleteImages };

@@ -1,4 +1,5 @@
-const cloudinary = require("cloudinary");
+const cloudinary = require("cloudinary").v2;
+const { Readable } = require("stream");
 
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -6,43 +7,41 @@ cloudinary.config({
   api_secret: process.env.API_SECRET,
 });
 
-// upload an image to a specific folder
-const cloudinaryUploadImage = async (filesToUpload, folder) => {
+const cloudinaryUploadImage = (fileBuffer, folder) => {
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload(
-      filesToUpload,
+    const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: folder,
         resource_type: "auto",
       },
       (error, result) => {
         if (error) {
-          reject(error);
-        } else {
+          return reject(error);
+        }
+        if (result) {
           resolve({
             secure_url: result.secure_url,
             asset_id: result.asset_id,
             public_id: result.public_id,
           });
+        } else {
+          reject(new Error("Cloudinary upload failed without an error or result."));
         }
       }
     );
+    
+    const readableStream = Readable.from(fileBuffer);
+    readableStream.pipe(uploadStream);
   });
 };
 
 const cloudinaryDeleteImage = async (publicId) => {
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.destroy(publicId, (error, result) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve({
-          message: "Image deleted successfully.",
-          result: result,
-        });
-      }
-    });
-  });
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+    return result;
+  } catch (error) {
+    throw error;
+  }
 };
 
 module.exports = { cloudinaryUploadImage, cloudinaryDeleteImage };

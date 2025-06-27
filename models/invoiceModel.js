@@ -13,6 +13,7 @@ const InvoiceSchema = new mongoose.Schema(
         message: (props) => `${props} is not a valid mongodbId`,
       },
     },
+    
     invoiceNumber: {
       type: String,
       required: true,
@@ -79,7 +80,10 @@ const InvoiceSchema = new mongoose.Schema(
         message: (props) => `${props} is not a valid mongodbId`,
       },
     },
-
+    invoiceCategory: {
+      type: String,
+      required: true,
+    },
     unit: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Unit",
@@ -91,10 +95,12 @@ const InvoiceSchema = new mongoose.Schema(
         message: (props) => `${props} is not a valid mongodbId`,
       },
     },
+
     invoiceDate: {
       type: Date,
       default: Date.now(),
     },
+
     dueDate: {
       type: Date,
       required: true,
@@ -112,6 +118,14 @@ const InvoiceSchema = new mongoose.Schema(
     deletedAt: {
       type: Date,
       default: null,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    updateBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
 

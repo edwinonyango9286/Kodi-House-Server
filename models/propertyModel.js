@@ -24,7 +24,10 @@ const propertySchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid objectId`,
       },
     },
-
+    updatedAt: {
+      type: Date,
+      default: null,
+    },
     type: {
       type: String,
       required: true,
@@ -35,7 +38,6 @@ const propertySchema = new mongoose.Schema(
       required: true,
     },
 
-    // current occupant should only exist for a single unit property
     currentOccupant: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -78,7 +80,19 @@ const propertySchema = new mongoose.Schema(
         message: "Number of units cannot be a negative value",
       },
     },
+
     occupiedUnits: {
+      type: Number,
+      default: 0,
+      validate: {
+        validator: (value) => {
+          return value >= 0;
+        },
+        message: "Occupied units cannot be a negative value",
+      },
+    },
+    
+    vacantUnits: {
       type: Number,
       default: 0,
       validate: {
@@ -192,7 +206,6 @@ const propertySchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
-
       tvCable: {
         type: Boolean,
         default: false,

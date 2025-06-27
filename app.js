@@ -51,6 +51,8 @@ const supportTicketRouter = require("./routes/supportTicketRoutes");
 const transactionRouter = require("./routes/transactionRoutes")
 const categoriesRouter = require("./routes/categoryRoutes")
 const tagRouter = require("./routes/tagRoutes")
+const invoiceCategoryRouter = require("./routes/invoiceCategoryRoutes")
+const imageUploadRouter = require("./routes/imageUploadRoutes")
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -113,5 +115,7 @@ app.use("/api/v1/support-tickets", supportTicketRouter);
 app.use("/api/v1/transaction",transactionRouter )
 app.use("/api/v1/categories",categoriesRouter)
 app.use("/api/v1/tags",tagRouter)
+app.use("/api/v1/invoice-categories", invoiceCategoryRouter)
+app.use("/api/v1/upload-images", imageUploadRouter)
 
 module.exports = app;
