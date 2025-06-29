@@ -208,50 +208,6 @@ const activateTenant = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-// fetch all tenants related to a particular landlord => gets all tenants whose account are not deleted
-const getAllTenants = expressAsyncHandler(async (req, res, next) => {
-  try {
-    const queryObject = { ...req.query };
-    const excludeFields = ["page", "sort", "limit", "offset", "fields"];
-    excludeFields.forEach((element) => delete queryObject[element]);
-
-    let queryString = JSON.stringify(queryObject);
-    queryString = queryString.replace(/\b(gte|gt|lte|lt)\b/g,(match) => `$${match}`);
-
-    // get only tenants who are not deleted and who are related to a particular logged in landlord
-    let query = User.find({...JSON.parse(queryString), isDeleted: false, deletedAt: null, createdBy: req.user._id,  }).populate({ path: "createdBy", select: "userName" }).populate({ path: "properties", select: "name" }).populate({ path: "units", select: "unitNumber" });
-
-    // sorting
-    if (req.query.sort) {
-      const sortBy = req.query.sort.split(",").join(" ");
-      query = query.sort(sortBy);
-    } else {
-      query = query.sort("-createdAt");
-    }
-
-    // field limiting
-    if (req.query.fields) {
-      const fields = req.query.fields.split(",").join(" ");
-      query = query.select(fields);
-    } else {
-      query = query.select("-__v");
-    }
-    // pagination
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const offset = parseInt(req.query.offset, 10) || 0;
-    query = query.skip(offset).limit(limit);
-
-    const tenants = await query;
-    return res.status(200).json({ status: "SUCCESS", data: tenants });
-  } catch (error) {
-    logger.error(error.message);
-    next(error);
-  }
-});
-
-
-
-
 //Delete a tenant => landlord
 const deleteTenantLandlord = expressAsyncHandler(async (req, res, next) => {
   try {
@@ -286,26 +242,15 @@ const deleteTenantLandlord = expressAsyncHandler(async (req, res, next) => {
 // Tenant deletes own account => Tenant
 const deleteTenantTenant = expressAsyncHandler(async (req, res, next) => {
   try {
-    const deletedTenant = await User.findOneAndUpdate(
-      {
-        _id: req.tenant._id,
-      },
-      { isDeleted: true, deletedAt: Date.now() },
-      { new: true, runValidators: true }
-    );
+    const { tenantId } = req.params;
+    const deletedTenant = await User.findOneAndUpdate( { _id:tenantId }, { createdBy:req.user._id, isDeleted: true, deletedAt: Date.now() } , { new: true, runValidators: true });
     if (!deletedTenant) {
-      return res
-        .status(400)
-        .json({ status: "FAILED", message: "Tenant not found." });
+      return res.status(400).json({ status: "FAILED", message: "Tenant not found." });
     }
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: "Tenant deleted successfully.",
-      data: deletedTenant,
-    });
+    return res.status(200).json({ status: "SUCCESS", message: "Tenant deleted successfully.", data: deletedTenant });
   } catch (error) {
     next(error);
   }
 });
 
-module.exports = { createATenant, updateTenantDetailsLandlord, getAllTenants, disableTenant, activateTenant, updateTenantDetailsTenant, deleteTenantLandlord, deleteTenantTenant };
+module.exports = { createATenant, updateTenantDetailsLandlord , disableTenant, activateTenant, updateTenantDetailsTenant, deleteTenantLandlord, deleteTenantTenant };

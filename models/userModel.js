@@ -101,7 +101,10 @@ const userSchema = new mongoose.Schema(
       type:Date,
       default:null
     },
-
+    moveOutDate:{
+      type:Date,
+      default:null
+    },
     units: [
       {
         type: mongoose.Schema.Types.ObjectId,

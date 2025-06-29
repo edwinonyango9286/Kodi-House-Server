@@ -52,3 +52,4 @@
 {"level":"error","timestamp":"2025-06-27 02:57:48"}
 {"level":"error","timestamp":"2025-06-27 02:58:26"}
 {"level":"error","timestamp":"2025-06-27 02:58:27"}
+{"_message":"User validation failed","errors":{"role":{"kind":"ObjectId","message":"Cast to ObjectId failed for value \"\" (type string) at path \"role\" because of \"BSONError\"","name":"CastError","path":"role","reason":{},"stringValue":"\"\"","value":"","valueType":"string"}},"level":"error","message":"User validation failed: role: Cast to ObjectId failed for value \"\" (type string) at path \"role\" because of \"BSONError\"","name":"ValidationError","timestamp":"2025-06-27 09:17:00"}

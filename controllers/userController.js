@@ -73,13 +73,12 @@ const listUsers = expressAsyncHandler(async (req, res, next) => {
     const userMakingRequest =  await User.findOne({ _id:req.user._id}).populate("role", "name");
     console.log(userMakingRequest.role.name,"=>userMakingRequest");
 
-
      let query;
 
      if( userMakingRequest && userMakingRequest.role.name ==="Landlord"){
-      query = User.find({...JSON.parse(queryStr), ...roleFilter, isDeleted: false, deletedAt: null, createdBy:req.user._id}).populate("role","name")
+      query = User.find({...JSON.parse(queryStr), ...roleFilter, isDeleted: false, deletedAt: null, createdBy:req.user._id}).populate("role","name").populate("properties", "name").populate("units", "name")
      } else {
-      query = User.find({...JSON.parse(queryStr), ...roleFilter, isDeleted: false, deletedAt: null,}).populate("role","name")
+      query = User.find({...JSON.parse(queryStr), ...roleFilter, isDeleted: false, deletedAt: null,}).populate("role","name").populate("properties","name").populate("units","unitNumber")
      }
      
     if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
