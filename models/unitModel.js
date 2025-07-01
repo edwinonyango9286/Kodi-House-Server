@@ -50,7 +50,7 @@ const unitSchema = new mongoose.Schema(
       required: true,
     },
 
-    rentPerMonth: {
+    rent: {
       type: Number,
       required: true,
     },
@@ -58,10 +58,10 @@ const unitSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    currentStatus:{
-      type:String,
-      enum:["Occupied","Vacant"],
-      default:"Vacant"
+    currentStatus: {
+      type: String,
+      enum: ["Occupied", "Vacant"],
+      default: "Vacant",
     },
     tags: [
       {
@@ -94,6 +94,10 @@ const unitSchema = new mongoose.Schema(
           required: true,
         },
         public_id: {
+          type: String,
+          required: true,
+        },
+        asset_id: {
           type: String,
           required: true,
         },

@@ -132,7 +132,6 @@ const getAllInvoices = expressAsyncHandler(async (req, res, next) => {
 });
 
 
-
 const deleteAnInvoice = expressAsyncHandler(async (req, res, next) => {
   try {
     const { invoiceId } = req.params;

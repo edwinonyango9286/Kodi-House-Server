@@ -6,75 +6,28 @@ const xlsx = require("xlsx");
 const fs = require("fs");
 const _ = require("lodash");
 const { descriptionFormater } = require("../utils/stringFormaters");
+const logger = require("../utils/logger");
+const Property = require("../models/propertyModel")
 
 // add a new unit
 const addANewUnit = expressAsyncHandler(async (req, res, next) => {
   try {
-    const { _id } = req.landlord;
+    const { _id } = req.user;
     validateMongoDbId(_id);
-    const {
-      property,
-      category,
-      rentPerMonth,
-      tags,
-      shortDescription,
-      images,
-      unitNumber,
-    } = req.body;
-
-    if (
-      !property ||
-      !category ||
-      !rentPerMonth ||
-      !tags ||
-      !shortDescription ||
-      !images ||
-      !unitNumber
-    ) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
+    const { property, category, rent, tags, shortDescription, images, unitNumber } = req.body;
+    if ( !property || !category || !rent || !tags || !shortDescription || !images || !unitNumber ) {
+      return res.status(400).json({ status: "FAILED",  message: "Please provide all the required fields." });
     }
-
     // Check if a unit with the same unit number already exists
-    const existingUnit = await Unit.findOne({
-      landlord: _id,
-      unitNumber: unitNumber.toUpperCase(),
-    });
-
-    if (existingUnit) {
-      // If the unit exists and isDeleted is true, restore it
-      if (existingUnit.isDeleted) {
-        existingUnit.isDeleted = false;
-        existingUnit.deletedAt = null;
-        await existingUnit.save();
-        return res.status(200).json({
-          status: "SUCCESS",
-          message: "Unit created successfully.",
-          data: existingUnit,
-        });
-      } else {
-        // If the unit exists and is not deleted, return an error
-        return res.status(400).json({
-          status: "FAILED",
-          message: "A unit with the same unit number already exists.",
-        });
-      }
+    const existingUnit = await Unit.findOne({ property:property, createdBy: _id, isDeleted:false,deletedAt:null, unitNumber: unitNumber.toUpperCase()});
+    if(existingUnit){
+      return res.status(409).json({ status:"FAILED", message:`Unit ${unitNumber} already exist.`})
     }
     // If no existing unit, create a new one
-    const newUnit = await Unit.create({
-      ...req.body,
-      landlord: _id,
-      unitNumber: unitNumber.toUpperCase(),
-      shortDescription: descriptionFormater(shortDescription),
-    });
-    return res.status(201).json({
-      status: "SUCCESS",
-      message: "Unit added successfully.",
-      data: newUnit,
-    });
+    const newUnit = await Unit.create({ ...req.body,createdBy: _id, unitNumber: unitNumber.toUpperCase(), shortDescription: descriptionFormater(shortDescription) });
+    return res.status(201).json({ status: "SUCCESS", message: "Unit added successfully.", data: newUnit });
   } catch (error) {
+    logger.error(error)
     next(error);
   }
 });

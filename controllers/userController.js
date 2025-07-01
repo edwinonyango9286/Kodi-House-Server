@@ -35,8 +35,6 @@ const updateUserProfile = expressAsyncHandler(
         return res.status(400).json({ status: "SUCCESS",message: "Please provide a valid email address.",});
       }
 
-      const user = await User.findById({_id:req.user._id})
-
       const updatedUser = await User.findOneAndUpdate({_id: req.user._id,}, {...req.body, firstName: _.startCase(_.toLower(firstName)), secondName: _.startCase(_.toLower(secondName)), lastName: _.startCase(_.toLower(lastName)), businessName: _.startCase(_.toLower(businessName))},{ new: true, runValidators: true });
       if (!updatedUser) {
         return res.status(404).json({ status: "FAILED", message: "User not found." });
@@ -50,12 +48,10 @@ const updateUserProfile = expressAsyncHandler(
 );
 
 
-
-
 const listUsers = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
-    const excludeFields = ["page", "sort", "limit", "offset", "fields"];
+    const excludeFields = ["page", "sort", "limit", "offset", "fields","search"];
     excludeFields.forEach((el) => delete queryObject[el]);
     
     const roleFilter = { }
@@ -74,11 +70,17 @@ const listUsers = expressAsyncHandler(async (req, res, next) => {
     console.log(userMakingRequest.role.name,"=>userMakingRequest");
 
      let query;
+     const baseQuery = JSON.parse(queryStr);
+
+     if(req.query.search) {
+      const searchRegex = new RegExp(req.query.search,"i");
+      baseQuery.$or =[{userName:searchRegex},{firstName:searchRegex}, {lastName:searchRegex}, {secondName:searchRegex},{email:searchRegex}, {phoneNumber:searchRegex},{status:searchRegex}]
+     }
 
      if( userMakingRequest && userMakingRequest.role.name ==="Landlord"){
-      query = User.find({...JSON.parse(queryStr), ...roleFilter, isDeleted: false, deletedAt: null, createdBy:req.user._id}).populate("role","name").populate("properties", "name").populate("units", "name")
+      query = User.find({...baseQuery, ...roleFilter, isDeleted: false, deletedAt: null, createdBy:req.user._id}).populate("role","name").populate("properties", "name").populate("units", "name")
      } else {
-      query = User.find({...JSON.parse(queryStr), ...roleFilter, isDeleted: false, deletedAt: null,}).populate("role","name").populate("properties","name").populate("units","unitNumber")
+      query = User.find({...baseQuery, ...roleFilter, isDeleted: false, deletedAt: null,}).populate("role","name").populate("properties","name").populate("units","unitNumber")
      }
      
     if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
@@ -90,11 +92,11 @@ const listUsers = expressAsyncHandler(async (req, res, next) => {
 
     
     const users = await query
-    const totalCount = users.length;
+    const totalCount = await User.countDocuments(query);
     const totalPages = Math.ceil(totalCount/limit)
 
   
-   return res.status(200).json({status: "SUCCESS", message:"Properties listed successfully.", data: users, totalCount,totalPages,limit, offset });
+   return res.status(200).json({status: "SUCCESS", message:"Users listed successfully.", data: users, totalCount,totalPages,limit, offset });
   } catch (error) {
     next(error);
   }

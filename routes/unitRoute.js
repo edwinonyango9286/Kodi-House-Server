@@ -3,7 +3,7 @@ const {addANewUnit,updateAUnit,deleteAUnit,getAllUnits,addFields,} = require("..
 const { verifyUserToken, checkUserRole } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
-router.post("/add_a_unit", addANewUnit);
+router.post("/add-a-unit", verifyUserToken,checkUserRole(["Landlord"]), addANewUnit);
 router.patch("/update_a_unit/:unitId",updateAUnit);
 router.delete("/delete_a_unit/:unitId",deleteAUnit);
 router.put("/update", addFields);
