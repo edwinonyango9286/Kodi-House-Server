@@ -3,7 +3,8 @@ const expressAsyncHandler = require("express-async-handler");
 const {descriptionFormater} = require("../utils/stringFormaters");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const _ = require("lodash")
-const slugify = require("slugify")
+const slugify = require("slugify");
+const logger = require("../utils/logger");
 
 const createAPropertyType = expressAsyncHandler(async (req, res, next) => {
   try {
@@ -29,15 +30,12 @@ const updateApropertyType = expressAsyncHandler(async(req,res,next)=>{
         const {propertyTypeId} = req.params;
         validateMongoDbId(propertyTypeId)
         const {status, description, name} = req.body;
-        if(!status || !name || !description){
-            return res.status(400).json({ message:"Please provide all the required fields"})
-        }
+        if(!status || !name || !description){ return res.status(400).json({ message:"Please provide all the required fields..."})}
         const updatedPropertyType = await PropertyType.findOneAndUpdate({ _id : propertyTypeId, isDeleted:false, deletedAt:null} , {...req.body, name:_.startCase(_.toLower(name)), description: descriptionFormater(description), updatedBy: req.user._id},  {new:true, runValidators:true })
-        if(!updatedPropertyType){
-            return res.status(404).json({ status:"FAILED", message:"Property type not found."})
-        }
+        if(!updatedPropertyType){ return res.status(404).json({ status:"FAILED", message:"Property type not found."})}
         return res.status(200).json({ status:"SUCCESS", message: "Property type updated successfully.", data:updatedPropertyType})
     } catch (error) {
+      logger.error(error)
      next(error)
     }
 })

@@ -81,35 +81,10 @@ const updateARole = expressAsyncHandler(async (req, res) => {
     const { roleId } = req.params;
     validateMongoDbId(roleId);
     const { name, description, status } = req.body;
-    if (!name || !description || !status) {
-      return res.status(404).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
-    }
-    const updatedRole = await Role.findOneAndUpdate(
-      { _id: roleId },
-      {
-        ...req.body,
-        name: _.startCase(_.toLower(name)),
-        description: descriptionFormater(description),
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-
-    if (!updatedRole) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Role not found." });
-    }
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: "Role update successfully.",
-      updatedRole,
-    });
+    if (!name || !description || !status) { return res.status(404).json({ status: "FAILED", message: "Please provide all the required fields." })}
+    const updatedRole = await Role.findOneAndUpdate({ _id: roleId },{...req.body, name: _.startCase(_.toLower(name)), description: descriptionFormater(description)}, { new: true, runValidators: true });
+    if (!updatedRole) { return res.status(404).json({ status: "FAILED", message: "Role not found." })}
+    return res.status(200).json({status: "SUCCESS", message: "Role update successfully.", data:updatedRole, });
   } catch (error) {
     logger.error();
     next(error);
@@ -133,36 +108,31 @@ const deleteARole = expressAsyncHandler(async (req, res, next) => {
     const { roleId } = req.params;
     validateMongoDbId(roleId);
     // deleted the role if it havent been deleted
-    const deletedRole = await Role.findOneAndUpdate(
-      {
-        _id: roleId,
-        isDeleted: false,
-        deletedAt: null,
-      },
-      { isDeleted: true, deletedAt: Date.now() },
-      { new: true, runValidators: true }
-    );
+    const deletedRole = await Role.findOneAndUpdate( { _id: roleId, isDeleted: false, deletedAt: null},{ isDeleted: true, deletedAt: Date.now() },{ new: true, runValidators: true });
     if (!deletedRole) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Role not found." });
+      return res.status(404).json({ status: "FAILED", message: "Role not found." });
     }
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: "Role deleted successfully.",
-      data: deletedRole,
-    });
+    return res.status(200).json({ status: "SUCCESS", message: "Role deleted successfully.", data: deletedRole });
   } catch (error) {
     logger.error(error.message);
     next();
   }
 });
 
-module.exports = {
-  createARole,
-  updateARole,
-  getAllRoles,
-  getARole,
-  deleteARole,
-  grantPermissionToARole,
-};
+const renameARole = expressAsyncHandler(async(req,res,next) =>{
+  try {
+    const {name} = req.body;
+    if(!name){ return res.status(400).json({ status:"FAILED", message:"Please provide role Name."})}
+    const { roleId } = req.params;
+    validateMongoDbId(roleId);
+    const renamedRole  =  await Role.findOneAndUpdate({ _id:roleId}, {name: _.startCase(_.toLower(name))},{ new:true, runValidators:true });
+    if(!renamedRole){return res.status(404).json({status:"FAILED", message:"Role not found."})}
+    return res.status(200).json({ status:"SUCCESS", message:"Role updated successfully.", data:renamedRole})
+  } catch (error) {
+    next(error)
+    console.log(error)
+  }
+}) 
+
+
+module.exports = {createARole, updateARole, getAllRoles, getARole, deleteARole, grantPermissionToARole, renameARole};

@@ -40,15 +40,18 @@ const taskSchema = new mongoose.Schema({
     trim: true,
     lowercase: true,
   },
-  tag: {
-    type: String,
-    required: true,
-    enum: ["Fix", "Today"],
-  },
+  tags: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tag",
+      required: true,
+    },
+  ],
+
   priority: {
     type: String,
     required: true,
-    enum: ["Low", "urgent", "Medium"],
+    enum: ["Low", "Urgent", "Medium"],
   },
 
   users: [
@@ -98,14 +101,19 @@ const taskSchema = new mongoose.Schema({
     default: "Not started",
   },
 
-  attachment: {
-    secure_url: {
-      type: String,
+  attachments: [
+    {
+      secure_url: {
+        type: String,
+      },
+      public_id: {
+        type: String,
+      },
+      asset_id: {
+        type: String,
+      },
     },
-    public_id: {
-      type: String,
-    },
-  },
+  ],
 });
 
 module.exports = mongoose.model("Task", taskSchema);

@@ -91,7 +91,7 @@ const propertySchema = new mongoose.Schema(
         message: "Occupied units cannot be a negative value",
       },
     },
-    
+
     vacantUnits: {
       type: Number,
       default: 0,
@@ -105,26 +105,8 @@ const propertySchema = new mongoose.Schema(
 
     // different unit can have different prices
     rent: {
-      start: {
-        type: Number,
-        required: true,
-        validate: {
-          validator: (value) => {
-            return value >= 0;
-          },
-          message: "Rent start cannot be a negative value",
-        },
-      },
-      end: {
-        type: Number,
-        default: 0,
-        validate: {
-          validator: (value) => {
-            return value >= 0;
-          },
-          message: "Rent end cannot be a nagative value",
-        },
-      },
+      type:Number,
+      required:true
     },
     briefDescription: {
       type: String,
@@ -142,7 +124,6 @@ const propertySchema = new mongoose.Schema(
     ],
     googleMap: {
       type: String,
-      required: true,
     },
     images: [
       {
@@ -151,6 +132,10 @@ const propertySchema = new mongoose.Schema(
           required: true,
         },
         public_id: {
+          type: String,
+          required: true,
+        },
+        asset_id: {
           type: String,
           required: true,
         },
@@ -229,8 +214,6 @@ const propertySchema = new mongoose.Schema(
     },
     location: {
       type: String,
-      maxlength: 32,
-      minlength: 2,
       required: true,
     },
     currentStatus: {

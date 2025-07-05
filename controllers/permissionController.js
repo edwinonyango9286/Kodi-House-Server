@@ -37,32 +37,11 @@ const updateAPermission = expressAsyncHandler(async (req, res, next) => {
     const { permissionId } = req.params;
     validateMongoDbId(permissionId);
     if (!name || !description || !status) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Please provide all the required fields.",
-      });
+      return res.status(400).json({ status: "FAILED", message: "Please provide all the required fields." });
     }
-    const updatedPermission = await Permission.findOneAndUpdate(
-      { _id: permissionId },
-      {
-        ...req.body,
-        updatedBy: req.user._id,
-        description: descriptionFormater(description),
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-
-    if (!updatedPermission) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Permission not found." });
-    }
-    return res
-      .status(200)
-      .json({ status: "SUCCESS", message: "Permission updated successfully." });
+    const updatedPermission = await Permission.findOneAndUpdate({ _id: permissionId },{ ...req.body, updatedBy: req.user._id, description: descriptionFormater(description)},{new: true,runValidators: true });
+    if (!updatedPermission) { return res.status(404).json({ status: "FAILED", message: "Permission not found." })}
+    return res.status(200).json({ status: "SUCCESS", message: "Permission updated successfully.",  });
   } catch (error) {
     logger.error(error.message);
     next(error);
@@ -104,29 +83,9 @@ const deleteAPermission = expressAsyncHandler(async (req, res, next) => {
   try {
     const { permissionId } = req.params;
     validateMongoDbId(permissionId);
-    const deletedPermission = await Permission.findOneAndUpdate(
-      {
-        _id: permissionId,
-        isDeleted: false,
-        deletedAt: null,
-      },
-      { isDeleted: true, deletedAt: Date.now() },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-
-    if (!deletedPermission) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Permission not found." });
-    }
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: "Permission deleted successfully.",
-      data: deletedPermission,
-    });
+    const deletedPermission = await Permission.findOneAndUpdate({ _id: permissionId, isDeleted: false, deletedAt: null }, { isDeleted: true, deletedAt: Date.now(), deletedBy:req.user._id }, { new: true, runValidators: true });
+    if (!deletedPermission) { return res.status(404).json({ status: "FAILED", message: "Permission not found." }) }
+    return res.status(200).json({ status: "SUCCESS", message: "Permission deleted successfully.", data: deletedPermission });
   } catch (error) {
     logger.error(error.message);
     next(error);

@@ -10,8 +10,8 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { _id } = req.user;
     validateMongoDbId(_id);
-    const {name,category,type,numberOfUnits,rent,briefDescription,googleMap,images,location,currentStatus} = req.body;
-    if ( !name || !category || !type || !numberOfUnits || !rent || !briefDescription || !googleMap || !images || !location || !currentStatus) {
+    const {name,category,type,rent,briefDescription,images,location,currentStatus} = req.body;
+    if ( !name || !category || !type || !rent || !briefDescription  || !images || !location || !currentStatus) {
       return res.status(404).json({status: "FAILED",message: "Please provide all the required fields.",})}
 
     // check for existing property by name for that particular landlord
@@ -35,8 +35,8 @@ const updateAproperty = expressAsyncHandler(async (req, res, next) => {
     validateMongoDbId(_id);
     validateMongoDbId(propertyId);
 
-    const {name,category,type,numberOfUnits,rent,briefDescription, googleMap,images,location,currentStatus} = req.body;
-    if ( !name || !category ||!type || !numberOfUnits ||!rent || !briefDescription || !googleMap || !images || !location || !currentStatus) {
+    const {name,category,type,rent,briefDescription,images,location,currentStatus} = req.body;
+    if ( !name || !category ||!type ||!rent || !briefDescription || !images || !location || !currentStatus) {
       return res.status(404).json({ status: "FAILED", message: "Please provide all the required fields."});
     }
     const updatedProperty = await Property.findOneAndUpdate( {_id: propertyId, createdBy: _id,}, { ...req.body, name: _.startCase(_.toLower(name)), briefDescription: descriptionFormater(briefDescription)},{ new: true, runValidators: true });

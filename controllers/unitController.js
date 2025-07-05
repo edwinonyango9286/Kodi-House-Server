@@ -7,7 +7,8 @@ const fs = require("fs");
 const _ = require("lodash");
 const { descriptionFormater } = require("../utils/stringFormaters");
 const logger = require("../utils/logger");
-const Property = require("../models/propertyModel")
+const Property = require("../models/propertyModel");
+const User = require("../models/userModel")
 
 // add a new unit
 const addANewUnit = expressAsyncHandler(async (req, res, next) => {
@@ -103,32 +104,42 @@ const updateAUnit = expressAsyncHandler(async (req, res, next) => {
 const getAllUnits = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
-    const excludeFields = ["page", "sort", "limit", "offset", "fields"];
+    const excludeFields = ["page", "sort", "limit", "offset", "fields","search"];
     excludeFields.forEach((el) => delete queryObject[el]);
 
     let queryStr = JSON.stringify(queryObject);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    let query = Unit.find({...JSON.parse(queryStr),isDeleted: false,deletedAt: null,})
-    .populate({path: "createdBy",select: "userName",populate: { path: "role",select: "name"}})
-    .populate("currentOccupant", "firstName secondName")
-    .populate("type", "name")
-    .populate("category", "name");
+    const userMakingRequest = await User.findOne({ _id:req?.user?._id}).populate("role","name");
 
-    if (req.user?.role?.name === "Landlord") {
-      query = query.where("createdBy").equals(req.user._id);
+    let query;
+    let baseQuery = JSON.parse(queryStr);
+
+
+    if(req.query.search){
+      const searchRegex = new RegExp(req.query.search, "i");
+      baseQuery.$or = [{unitNumber:searchRegex},{currentStatus:searchRegex},{category:searchRegex}]
+    }
+    if(userMakingRequest && userMakingRequest.role.name ==="Landlord"){
+      query = Unit.find({...baseQuery, createdBy:req.user._id, isDeleted: false,deletedAt: null,}).populate({path: "createdBy",select: "userName",populate: { path: "role",select: "name"}}).populate("currentOccupant", "firstName secondName").populate("category");
+    }else if(userMakingRequest && userMakingRequest.role.name === "Admin"){
+      query = Unit.find({...baseQuery, isDeleted: false,deletedAt: null,}).populate({path: "createdBy",select: "userName",populate: { path: "role",select: "name"}}).populate("currentOccupant", "firstName secondName").populate("category");
+    }else{
+      query = Unit.find({...baseQuery, currentStatus:"Vacant", isDeleted: false,deletedAt: null,}).populate({path: "createdBy",select: "userName",populate: { path: "role",select: "name"}}).populate("currentOccupant", "firstName secondName").populate("category");
     }
 
     if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
     if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
     
     const limit = parseInt(req.query.limit) || 10;
-    const page = parseInt(req.query.page) || 1;
-    const skip = (page - 1) * limit;
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+    query = query.skip(offset).limit(limit);
+
+    const units = await query;
+    const totalCount = await Unit.countDocuments(query)
+    const totalPages = Math.ceil(totalCount / limit);
     
-    const units = await query.skip(skip).limit(limit);
-    
-   return res.status(200).json({status: "SUCCESS", message:"Units listed successfully.", data: units,});
+   return res.status(200).json({status: "SUCCESS", message:"Units listed successfully.", data: units, totalCount, totalPages, limit, offset});
   } catch (error) {
     next(error);
   }

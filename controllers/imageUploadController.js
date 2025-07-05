@@ -41,7 +41,6 @@ const deleteImages = expressAsyncHandler(async (req, res, next) => {
     if (!publicId) {
       return res.status(400).json({ status: "FAILED", message: "Please provide image ID." });
     }
-
     const deleted = await cloudinaryDeleteImage(publicId);
     if (deleted.result === "ok") {
       return res.json({ status: "SUCCESS", message: "Image deleted successfully." });

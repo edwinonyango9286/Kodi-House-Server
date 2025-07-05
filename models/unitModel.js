@@ -25,7 +25,7 @@ const unitSchema = new mongoose.Schema(
     },
     currentOccupant: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Tenant",
+      ref: "User",
       default: null,
       validate: {
         validator: function (id) {
@@ -49,7 +49,6 @@ const unitSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
     rent: {
       type: Number,
       required: true,

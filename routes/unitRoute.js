@@ -7,6 +7,6 @@ router.post("/add-a-unit", verifyUserToken,checkUserRole(["Landlord"]), addANewU
 router.patch("/update_a_unit/:unitId",updateAUnit);
 router.delete("/delete_a_unit/:unitId",deleteAUnit);
 router.put("/update", addFields);
-router.get("/units",verifyUserToken, checkUserRole(["Admin", "Landlord"]),getAllUnits);
+router.get("/units", verifyUserToken, getAllUnits);
 
 module.exports = router;
