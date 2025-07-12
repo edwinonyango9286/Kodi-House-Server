@@ -57,20 +57,19 @@ const imageUploadRouter = require("./routes/imageUploadRoutes")
 app.use(express.json({ limit: "50mb" }));
 
 const origins = [
-  process.env.ORIGIN_LOCALHOST_5173,  //development port for landlord app
+  process.env.ORIGIN_LOCALHOST_5173,  
   process.env.ORIGIN_LOCALHOST_3001,
   process.env.ORIGIN_LOCALHOST_4000,
   process.env.ORIGIN_LOCALHOST_ADMIN,
   process.env.KODI_HOUSE_LANDLORDAPP_PROD_URL,
   process.env.KODI_HOUSE_ADMIN_DEV_URL,
-
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || origins.includes(origin)) {
-        callback(null, { origin: origin, optionsSuccessStatus: 200 });
+      if (origins.indexOf(origin) !== -1 || !origin) {
+        callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
       }

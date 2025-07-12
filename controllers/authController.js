@@ -152,8 +152,8 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
     // Set refresh token in cookies
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     });
 
@@ -293,6 +293,7 @@ const resetPassword = asyncHandler(async (req, res, next) => {
 const logout = asyncHandler(async (req, res,next) => {
   try {
     const cookie = req.cookies;
+    console.log(cookie,"=>Cookies")
     if (!cookie.refreshToken) { return res.status(401).json({status: "FAILED",message: "We could not find refresh token in cookies.",}); }
     const refreshToken = cookie.refreshToken;
     const user = await User.findOne({ refreshToken }).select("+refreshToken");
@@ -300,7 +301,7 @@ const logout = asyncHandler(async (req, res,next) => {
       res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       });
       return res.status(200).json({ status: "SUCCESS",message: "You have successfully logged out.",});
     }
@@ -313,7 +314,7 @@ const logout = asyncHandler(async (req, res,next) => {
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     });
     return res.status(200).json({status: "SUCCESS",message: "You've successfully logged out.",});
   } catch (error) {
