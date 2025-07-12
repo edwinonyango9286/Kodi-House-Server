@@ -152,12 +152,10 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
     // Set refresh token in cookies
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure:  process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production", 
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     });
-
-    console.log(parseInt(process.env.REFRESH_TOKEN_MAX_AGE),"==============")
     
     // Remove sensitive data
     const userData = user.toObject();
@@ -292,31 +290,21 @@ const resetPassword = asyncHandler(async (req, res, next) => {
   }
 });
 
-const logout = asyncHandler(async (req, res,next) => {
+const logout = asyncHandler(async (req, res, next) => {
   try {
-    const cookie = req.cookies;
-    console.log(cookie,"=>Cookies")
-    if (!cookie.refreshToken) { return res.status(401).json({status: "FAILED",message: "We could not find refresh token in cookies.",}); }
-    const refreshToken = cookie.refreshToken;
-    const user = await User.findOne({ refreshToken }).select("+refreshToken");
-    if (!user) {
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      });
-      return res.status(200).json({ status: "SUCCESS",message: "You have successfully logged out.",});
-    }
-    await User.findOneAndUpdate({ refreshToken },{ refreshToken: null }
-    ).select("+refreshToken");
+    const { refreshToken } = req.cookies;
+    if (!refreshToken) { return res.status(401).json({status: "FAILED", message: "No refresh token found in cookies." })}
+
+    const user = await User.findOneAndUpdate({ refreshToken }, { refreshToken: null },{ new: true }).select("+refreshToken");
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production", 
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     });
-    return res.status(200).json({status: "SUCCESS",message: "You've successfully logged out.",});
+    return res.status(200).json({ status: "SUCCESS",  message: "You've been successfully logged out." });
   } catch (error) {
-    next(error)
+    logger.error(error);
+    next(error);
   }
 });
 
