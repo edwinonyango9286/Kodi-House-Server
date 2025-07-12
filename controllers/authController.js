@@ -152,11 +152,13 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
     // Set refresh token in cookies
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
+      secure:  process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     });
 
+    console.log(parseInt(process.env.REFRESH_TOKEN_MAX_AGE),"==============")
+    
     // Remove sensitive data
     const userData = user.toObject();
     delete userData.password;
@@ -305,11 +307,7 @@ const logout = asyncHandler(async (req, res,next) => {
       });
       return res.status(200).json({ status: "SUCCESS",message: "You have successfully logged out.",});
     }
-    await User.findOneAndUpdate(
-      { refreshToken },
-      {
-        refreshToken: null,
-      }
+    await User.findOneAndUpdate({ refreshToken },{ refreshToken: null }
     ).select("+refreshToken");
     res.clearCookie("refreshToken", {
       httpOnly: true,
