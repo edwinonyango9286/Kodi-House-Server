@@ -152,8 +152,8 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
     // Set refresh token in cookies
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", 
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: false, 
+      sameSite: "strict",
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     });
     
@@ -298,8 +298,8 @@ const logout = asyncHandler(async (req, res, next) => {
     const user = await User.findOneAndUpdate({ refreshToken }, { refreshToken: null },{ new: true }).select("+refreshToken");
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", 
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: false,
+      sameSite: "strict",
     });
     return res.status(200).json({ status: "SUCCESS",  message: "You've been successfully logged out." });
   } catch (error) {
