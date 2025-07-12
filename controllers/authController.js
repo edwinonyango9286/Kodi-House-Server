@@ -155,7 +155,6 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
       secure: process.env.NODE_ENV === "production", 
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
-      domain: process.env.NODE_ENV === "production" ? ".onrender.com" : undefined,
     });
     
     // Remove sensitive data
@@ -301,7 +300,6 @@ const logout = asyncHandler(async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", 
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      domain: process.env.NODE_ENV === "production" ? ".onrender.com" : undefined,
     });
     return res.status(200).json({ status: "SUCCESS",  message: "You've been successfully logged out." });
   } catch (error) {
@@ -312,4 +310,4 @@ const logout = asyncHandler(async (req, res, next) => {
 
 // so far so good => any error to be reported asap.
 
-module.exports = {registerNewUser,activateAdminAccount,activateTenantAccount,activateLandlordAccount,refreshUserAccessToken,signInAdmin,signInTenant,signInLandlord,updatePassword,passwordResetToken,resetPassword,verifyLandlordAccount,logout,};
+module.exports = { registerNewUser,activateAdminAccount,activateTenantAccount,activateLandlordAccount,refreshUserAccessToken,signInAdmin,signInTenant,signInLandlord,updatePassword,passwordResetToken,resetPassword,verifyLandlordAccount,logout };
