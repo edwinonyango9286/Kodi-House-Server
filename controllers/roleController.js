@@ -28,7 +28,6 @@ const createARole = expressAsyncHandler(async (req, res, next) => {
 });
 
 
-
 const grantPermissionToARole = expressAsyncHandler(async (req, res, next) => {
   try {
     const { roleId } = req.params;
@@ -57,18 +56,8 @@ const getARole = expressAsyncHandler(async (req, res, next) => {
     console.log(roleId,"=>roleId")
     validateMongoDbId(roleId);
     // find a role related to that particular landlord => only get the role if it is not deleted
-    const role = await Role.findOne({
-      _id: roleId,
-      isDeleted: false,
-      deletedAt: null,
-    })
-      .populate({ path: "createdBy", select: "userName" })
-      .populate({ path: "permissions", select: "name" });
-    if (!role) {
-      return res
-        .status(404)
-        .json({ status: "FAILED", message: "Role not found." });
-    }
+    const role = await Role.findOne({_id: roleId, isDeleted: false, deletedAt: null }).populate({ path: "createdBy", select: "userName" }).populate({ path: "permissions"});
+    if (!role) { return res.status(404).json({ status: "FAILED", message: "Role not found." })}
     return res.status(200).json({ status: "SUCCESS", data: role });
   } catch (error) {
     next(error);

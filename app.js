@@ -61,8 +61,8 @@ const origins = [
   process.env.ORIGIN_LOCALHOST_3001,
   process.env.ORIGIN_LOCALHOST_4000,
   process.env.ORIGIN_LOCALHOST_ADMIN,
-  process.env.KODI_HOUSE_LANDLORDAPP_PRODUCTION_URL,
-  process.env.KODI_HOUSE_ADMIN_PRODUCTION_URL,
+  process.env.KODI_HOUSE_LANDLORDAPP_PROD_URL,
+  process.env.KODI_HOUSE_ADMIN_DEV_URL,
 
 ];
 
