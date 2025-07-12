@@ -46,9 +46,7 @@ const getApropertyType = expressAsyncHandler(async(req,res,next)=>{
         const {propertyTypeId} = req.params;
         validateMongoDbId(propertyTypeId)
         const propertyType = await PropertyType.findOne({ _id: propertyTypeId, isDeleted:false, deletedAt:null}).populate({ path:"createdBy", select:"userName"}).populate({ path:"updatedBy", select:"userName"})
-        if(!propertyType){
-            return res.status(404).json({ status:"FAILED", message:"Property type not found."})
-        }
+        if(!propertyType){ return res.status(404).json({ status:"FAILED", message:"Property type not found."})}
         return res.status(200).json({ status:"SUCCESS", data: propertyType})
     } catch (error) {
         next(error)
@@ -107,16 +105,12 @@ const deleteAPropertyType = expressAsyncHandler(async(req,res,next)=>{
         const {propertyTypeId} = req.params
         validateMongoDbId(propertyTypeId)
         const deletedPropertyType = await PropertyType.findOneAndUpdate({_id: propertyTypeId, isDeleted:false, deletedAt:null}, { isDeleted: true, deletedAt:Date.now() , deletedBy: req.user._id}, { new: true, runValidators:true})
-        if(!deletedPropertyType){
-            return res.status(404).json({ status:"FAILED", message:"Property type not found."})
-        }
+        if(!deletedPropertyType){ return res.status(404).json({ status:"FAILED", message:"Property type not found."})}
         return res.status(200).json({ status:"SUCCESS", message:"Property type deleted successfully.", data: deletedPropertyType})
     } catch (error) {
        next(error) 
     }
 })
-
-
 
 
 module.exports = {createAPropertyType, getApropertyType,deleteAPropertyType, updateApropertyType, getAllPropertyTypes}

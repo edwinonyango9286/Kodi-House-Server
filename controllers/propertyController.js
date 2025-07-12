@@ -188,12 +188,19 @@ const vacateATenantFromAProperty = expressAsyncHandler(
 const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { propertyId } = req.params;
-    console.log(propertyId,"=>propertyId")
+    console.log(propertyId)
     validateMongoDbId(propertyId);
-    
-    const deletedProperty = await Property.findOneAndUpdate({ _id: propertyId, createdBy: req.user._id, isDeleted: false,  deletedAt: null }, { isDeleted: true, deletedAt: Date.now() }, {  new: true, runValidators: true, });
+  // if user is admin 
+  const userMakingRequest = await User.findOne({ _id:req.user._id}).populate("role","name");
+  let deletedProperty;
+
+  if(userMakingRequest.role.name === "Admin"){
+    deletedProperty = await Property.findOneAndUpdate({ _id: propertyId, isDeleted: false,  deletedAt: null }, { isDeleted: true, deletedAt: Date.now() }, {  new: true, runValidators: true, });
+  }else {
+    deletedProperty = await Property.findOneAndUpdate({ _id: propertyId, createdBy:req.user._id, isDeleted: false,  deletedAt: null }, { isDeleted: true, deletedAt: Date.now() }, {  new: true, runValidators: true, });
+  }
     if (!deletedProperty) { return res.status(404).json({ status: "SUCCESS", message: "Property not found." }) }
-    return res.status(200).json({ status: "SUCCESS", data: deletedProperty, message: "Property deleted successfully.", });
+    return res.status(200).json({ status: "SUCCESS",  message: "Property deleted successfully.", data: deletedProperty });
   } catch (error) {
     next(error);
   }
