@@ -148,12 +148,11 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
     const refreshToken = generateRefreshToken(user._id);
     user.refreshToken = refreshToken;
     await user.save();
-
-    // Set refresh token in cookies
+    
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: false, 
-      sameSite: "strict",
+      secure: process.env.NODE_ENV ==="production", 
+      sameSite: process.env.NODE_ENV==="production" ? "none" : "lax",
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
     });
     
@@ -298,8 +297,8 @@ const logout = asyncHandler(async (req, res, next) => {
     const user = await User.findOneAndUpdate({ refreshToken }, { refreshToken: null },{ new: true }).select("+refreshToken");
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: false,
-      sameSite: "strict",
+      secure: process.env.NODE_ENV ==="production", 
+      sameSite: process.env.NODE_ENV==="production" ? "none" : "lax",
     });
     return res.status(200).json({ status: "SUCCESS",  message: "You've been successfully logged out." });
   } catch (error) {
@@ -309,5 +308,4 @@ const logout = asyncHandler(async (req, res, next) => {
 });
 
 // so far so good => any error to be reported asap.
-
 module.exports = { registerNewUser,activateAdminAccount,activateTenantAccount,activateLandlordAccount,refreshUserAccessToken,signInAdmin,signInTenant,signInLandlord,updatePassword,passwordResetToken,resetPassword,verifyLandlordAccount,logout };

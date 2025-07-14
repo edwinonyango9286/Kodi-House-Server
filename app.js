@@ -86,7 +86,7 @@ app.use(
     secret: process.env.SESSION_SECERET_KEY,
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: false }, //should be set to true if you are using https for example in production.
+    cookie: { secure: false },
   })
 );
 
