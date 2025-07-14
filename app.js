@@ -68,6 +68,7 @@ const origins = [
 app.use(
   cors({
     origin: (origin, callback) => {
+      if(!origin){return callback(null,true)};
       if (origins.indexOf(origin) !== -1 || !origin) {
         callback(null, true);
       } else {
