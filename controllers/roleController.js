@@ -6,16 +6,13 @@ const { descriptionFormater } = require("../utils/stringFormaters");
 const logger = require("../utils/logger");
 const slugify = require("slugify");
 
-// Both admins and landlords can add roles
 const createARole = expressAsyncHandler(async (req, res, next) => {
   try {
     const { name, description, status } = req.body;
     if (!name || !description || !status) {
       return res.status(400).json({status: "FAILED",message: "Please provide all the required fields.",});
     }
-    // check if the role already exist by name
     const existingRole = await Role.findOne({ isDeleted:false, deletedAt:null, name: _.startCase(_.toLower(name)),});
-    // if the role already exist and isDeleted is true then update the role
     if (existingRole) {return res.status(400).json({ status: "FAILED", message: "Role already exist." });}
     const createdRole = await Role.create({...req.body,name: _.startCase(_.toLower(name)),description: descriptionFormater(description), slug: slugify(name),createdBy: req.user._id,});
     if (createdRole) {

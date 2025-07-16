@@ -24,10 +24,7 @@ const sendSMS = async (to, message, from = "Kodi House") => {
     };
   } catch (error) {
     logger.error(error.message);
-    return {
-      status: "FAILED",
-      message: error.message,
-    };
+    return { status: "FAILED", message: error.message  };
   }
 };
 

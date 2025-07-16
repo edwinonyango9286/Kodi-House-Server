@@ -162,10 +162,12 @@ const userSchema = new mongoose.Schema(
     },
     refreshToken: {
       type: String,
-      unique: true,
       trim: true,
-      sparse: true,
       select: false,
+      index: {
+        unique: true,
+        partialFilterExpression: { refreshToken: { $ne: null } },
+      },
     },
     status: {
       type: String,

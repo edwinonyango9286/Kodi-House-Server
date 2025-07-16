@@ -103,24 +103,9 @@ const verifyLandlordAccount = asyncHandler(async (req, res) => {
   try {
     const { landlordId } = req.params;
     validateMongoDbId(landlordId);
-    const verifiedLandlord = await User.findOneAndUpdate(
-      {
-        _id: landlordId,
-      },
-      {
-        isAccountVerrified: true,
-      }
-    );
-    if (!verifiedLandlord) {
-      return res
-        .status(404)
-        .json({ status: "Failed", message: "Landlord not found." });
-    }
-    return res.status(200).json({
-      status: "SUCCESS",
-      message: "Landlord account activated successfully.",
-      data: verifiedLandlord,
-    });
+    const verifiedLandlord = await User.findOneAndUpdate({_id: landlordId,},{ isAccountVerrified: true });
+    if (!verifiedLandlord) { return res.status(404).json({ status: "Failed", message: "Landlord not found." })}
+    return res.status(200).json({ status: "SUCCESS", message: "Landlord account activated successfully.",data: verifiedLandlord });
   } catch (error) {
     logger.error({ message: error.message });
     return res.status(500).json({ message: error.message });
@@ -131,19 +116,11 @@ const verifyLandlordAccount = asyncHandler(async (req, res) => {
 const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
   try {
     const { email, password } = req.body;
-    // Check for required fields
     if (!email || !password) { return res.status(400).json({status: "FAILED", message: "Please provide all the required fields.",});}
-    // Validate email format
     if (!emailValidator.validate(email)) {return res.status(400).json({ status: "FAILED",message: "Please provide a valid email address.",});}
-    // Find the user by email => also ensure that user whose accounts are not deleted are the only ones who can log in
     const user = await User.findOne({ email,isDeleted: false,deletedAt: null,}).select("+password").populate({ path: "role", select: "name" });
-    // Check if user exists and has the expected role
-    if (!user || user.role.name !== expectedRole) {return res.status(404).json({status: "FAILED",message: `${expectedRole} account not found or not authorized.`});}
-
-    // Check password
+    if (!user || user.role.name !== expectedRole) {return res.status(404).json({status: "FAILED",message: `${expectedRole} account not found.`});}
     if (!(await user.isPasswordMatched(password))) {return res.status(401).json({status: "FAILED",message: "Wrong email or password."});}
-
-    // Generate tokens
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
     user.refreshToken = refreshToken;
@@ -151,14 +128,12 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
     
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV ==="production", 
-      sameSite: process.env.NODE_ENV==="production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production", 
+      sameSite: process.env.NODE_ENV=== "production" ? "none" : "lax",
       maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
       // domain: process.env.NODE_ENV === "production"? ".onrender.com" : undefined ,
       // path: "/"
     });
-    
-    // Remove sensitive data
     const userData = user.toObject();
     delete userData.password;
     delete userData.refreshToken;
@@ -170,40 +145,23 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
   }
 });
 
-// Sign in Admin
+
 const signInAdmin = (req, res, next) => signInUser(req, res, next, "Admin");
-// Sign in Landlord
-const signInLandlord = (req, res, next) =>
-  signInUser(req, res, next, "Landlord");
-// Sign in Tenant
+const signInLandlord = (req, res, next) => signInUser(req, res, next, "Landlord");
 const signInTenant = (req, res, next) => signInUser(req, res, next, "Tenant");
-// Generates new access token from refresh token for the landlord
+
 const refreshUserAccessToken = asyncHandler(async (req, res, next) => {
   try {
     const { refreshToken } = req.cookies;
-    if (!refreshToken) {
-      return res.status(400).json({
-        status: "FAILED",
-        // if refresh token is missing from cookies it means the refresh token has expired from the browser cookies
-        message: "Session expired. Please log in to continue.",
-      });
-    }
+    if (!refreshToken) { return res.status(400).json({status: "FAILED", message: "Session expired. Please log in to continue." })}
     const user = await User.findOne({ refreshToken }).select("+refreshToken");
     if (!user) {
-      return res
-        .status(400)
-        .json({ status: "FAILED", message: "Invalid refresh token." });
-    }
+      return res.status(400).json({ status: "FAILED", message: "Invalid refresh token." })}
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-    if (user.id !== decoded.id) {
-      return res.status(400).json({
-        status: "FAILED",
-        message: "Unauthorized access. Please log in to continue.",
-      });
-    }
+    if (user.id !== decoded.id) { return res.status(400).json({ status: "FAILED", message: "Unauthorized access. Please log in to continue." }) }
     const newAccessToken = generateAccessToken(user._id);
     req.user = user;
-    return newAccessToken; // Return the new access token
+    return newAccessToken; 
   } catch (error) {
     next(error);
   }
@@ -213,9 +171,7 @@ const refreshUserAccessToken = asyncHandler(async (req, res, next) => {
 const updatePassword = asyncHandler(async (req, res, next) => {
   try {
     const { currentPassword, newPassword, confirmNewPassword } = req.body;
-    if (!currentPassword || !newPassword || !confirmNewPassword) {
-      return res.status(400).json({ status: "FAILED", message: "Please fill in all the required fields.",});
-    }
+    if (!currentPassword || !newPassword || !confirmNewPassword) { return res.status(400).json({ status: "FAILED", message: "Please fill in all the required fields.",})}
     validatePassword(currentPassword);
     validatePassword(newPassword);
     validatePassword(confirmNewPassword);

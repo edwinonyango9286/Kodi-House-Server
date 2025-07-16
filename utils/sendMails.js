@@ -28,10 +28,7 @@ const sendMail = asyncHandler(async (options) => {
   try {
     await transporter.sendMail(mailOptions);
   } catch (error) {
-    return {
-      status: "Failed",
-      message: error.message,
-    };
+    return { status: "Failed", message: error.message };
   }
 });
 

@@ -3,9 +3,9 @@ const expressAsyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../utils/validateMongoDbId");
 const _ = require("lodash");
 const { descriptionFormater } = require("../utils/stringFormaters");
-const  User = require("../models/userModel")
+const  User = require("../models/userModel");
+const logger = require("../utils/logger")
 
-// add a new property
 const addAProperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { _id } = req.user;
@@ -13,8 +13,6 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
     const {name,category,type,rent,briefDescription,images,location,currentStatus} = req.body;
     if ( !name || !category || !type || !rent || !briefDescription  || !images || !location || !currentStatus) {
       return res.status(404).json({status: "FAILED",message: "Please provide all the required fields.",})}
-
-    // check for existing property by name for that particular landlord
     const existingProperty = await Property.findOne({ createdBy: _id, name: _.startCase(_.toLower(name)), isDeleted: false, deletedAt: null});
     if (existingProperty) {
       return res.status(409).json({  status: "FAILED",  message: `Property ${existingProperty.name} already exist.`,})
@@ -26,8 +24,6 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-
-// update a property
 const updateAproperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { _id } = req.user;
@@ -76,20 +72,19 @@ const getAllProperties = expressAsyncHandler(async (req, res, next) => {
     let query;
     let baseQuery = JSON.parse(queryStr);
 
-    // Add search functionality
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
       baseQuery.$or = [ { name: searchRegex } , { type: searchRegex },{ category: searchRegex },{currentStatus: searchRegex}];
     }
 
     if( userMakingRequest && userMakingRequest.role.name === "Admin") {
-      query = Property.find({...baseQuery, isDeleted:false, deletedAt:null}).populate({ path: "createdBy", select: "userName" }).populate("currentOccupant", "firstName secondName");
+      query = Property.find({...baseQuery, isDeleted:false, deletedAt:null}).populate({ path: "createdBy", select: "userName" }).populate("currentOccupant", "firstName secondName").sort({ createdAt:-1});
     } else if ( userMakingRequest && userMakingRequest.role.name === "Landlord") { query = Property.find({ ...baseQuery, isDeleted: false, deletedAt: null, createdBy: req?.user?._id}).populate("currentOccupant", "firstName secondName");
     } else {
       query = Property.find({...baseQuery, isDeleted: false, deletedAt: null, currentOccupant: null }).populate({ path: "createdBy", select: "userName" });
     }
     
-    // Rest of your existing code...
+    query= query.sort({ createdAt:-1})
     if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
     if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
     
@@ -109,7 +104,6 @@ const getAllProperties = expressAsyncHandler(async (req, res, next) => {
 
 
 
-// asign a property and to a tenant=> only properties that there type are single unit can be asigned to a single tenant
 const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
   try {
     const { propertyId } = req.params;
@@ -122,14 +116,12 @@ const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
       return res.status(404).json({ status: "FAILED", message: "Tenant not found." });
     }
 
-    // check if a property is already assigned to another tenant
     const property = await Property.findOne({ _id: propertyId, createdBy:req.user._id, isDeleted: false, deletedAt: null ,});
 
     if (!property) {
       return res.status(404).json({ status: "FAILED", message: "Property not found." });
     }
 
-    // ensures that only properties that are single unit are asigned to a single tenant.
     if (property.type === "Multi Unit") {
       return res.status(400).json({ status: "FAILED", message: "A multi unit property cannot be assigned to a single tenant" });
     }
@@ -137,7 +129,6 @@ const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
     if (property.currentOccupant && property.currentStatus === "Occupied") {
       return res.status(400).json({ status: "FAILED", message: "Property already assigned to a tenant.", });
     }
-    // if property doesn't have  and tenant occupant and status is vacant asign the property to the tenant
     property.currentOccupant = tenantId;
     property.currentStatus = "Occupied";
     property.runValidators = true;
@@ -153,22 +144,18 @@ const asignPropertyToAtenant = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-// vacate tenant from a property
+
 const vacateATenantFromAProperty = expressAsyncHandler(
   async (req, res, next) => {
     try {
       const { propertyId } = req.params;
       validateMongoDbId(propertyId);
 
-      // find property
       const property = await Property.findOne({_id: propertyId, createdBy: req.user._id, isDeleted: false, deletedAt: null, });
       if (!property) {
         return res.status(404).json({ status: "Failed", message: "Property not found." });
       }
-
-      // find tenant
       const tenant = await User.findOne({_id: property.currentOccupant, createdBy: req.user._id, properties: { $in: [propertyId] } });
-      // remove property id from
       tenant.properties.pull(propertyId);
       const vacatedTenant = await tenant.save();
 
@@ -184,13 +171,11 @@ const vacateATenantFromAProperty = expressAsyncHandler(
 );
 
 
-// only landlords can delete properties
 const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { propertyId } = req.params;
     console.log(propertyId)
     validateMongoDbId(propertyId);
-  // if user is admin 
   const userMakingRequest = await User.findOne({ _id:req.user._id}).populate("role","name");
   let deletedProperty;
 
@@ -206,5 +191,25 @@ const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
+const bulkDeleteProperties = expressAsyncHandler(async (req,res,next)=>{
+  try {
+    const propertyIds = req.body.propertyIds
+    if(propertyIds.length === 0){
+      return res.status(400).json({ status:"FAILED", message:"No property selected for deletion."})
+    }
+    const deletedProperties = await Property.updateMany({ _id:{ $in:propertyIds}, isDeleted:false },{ deletedBy:req.user._id, deletedAt: new Date(),isDeleted:true}, { new:true, runValidators:true });
+    console.log(deletedProperties,"=>deletedProperties")
+    if( deletedProperties.matchedCount === 0){
+      return res.status(404).json({ status: "FAILED", message: "No deletable properties found. Properties may already have been deleted or do not exist exist." })
+    }
+    return res.status(200).json({ status:"SUCCESS", message:` ${deletedProperties.modifiedCount} Properties deleted successfully`,   data: { matchedCount: deletedProperties.matchedCount, modifiedCount: deletedProperties.modifiedCount } })
+  } catch (error) {
+    logger.error(error.message)
+    next(error)
+  }
+});
 
-module.exports = { addAProperty, getApropertyById, getAllProperties,updateAproperty,deleteAProperty, asignPropertyToAtenant,vacateATenantFromAProperty};
+
+
+
+module.exports = { addAProperty, getApropertyById, getAllProperties,updateAproperty,deleteAProperty, asignPropertyToAtenant,vacateATenantFromAProperty, bulkDeleteProperties};

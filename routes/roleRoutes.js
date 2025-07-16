@@ -3,7 +3,7 @@ const {createARole,updateARole,getAllRoles,getARole,deleteARole, grantPermission
 const { verifyUserToken, checkUserRole, checkUserPermission } = require("../middlewares/authMiddleware");
 const router = express.Router();
 
-router.post("/create",verifyUserToken, checkUserRole(["Admin","Landlord"]), createARole);
+router.post("/create",verifyUserToken, checkUserRole(["Admin","Landlord"]),createARole);
 router.get("/all/roles", verifyUserToken, checkUserRole(["Admin","Landlord"]), getAllRoles);
 router.get("/:roleId", verifyUserToken,checkUserRole(["Admin","Landlord"]), getARole);
 router.patch("/:roleId/update", verifyUserToken, checkUserRole(["Admin",]),updateARole);
