@@ -57,11 +57,11 @@ const imageUploadRouter = require("./routes/imageUploadRoutes")
 app.use(express.json({ limit: "50mb" }));
 
 const origins = [
-  process.env.ORIGIN_LOCALHOST_5173,  
+  process.env.ORIGIN_LANDLORDAPP_LOCAL_5173,  
   process.env.ORIGIN_LOCALHOST_3001,
   process.env.ORIGIN_LOCALHOST_4000,
   process.env.ORIGIN_LOCALHOST_ADMIN,
-  process.env.KODI_HOUSE_LANDLORDAPP_PROD_URL,
+  process.env.KODI_HOUSE_LANDLORDAPP_DEV_URL,
   process.env.KODI_HOUSE_ADMIN_DEV_URL,
 ];
 

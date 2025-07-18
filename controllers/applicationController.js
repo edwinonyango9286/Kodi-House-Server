@@ -26,7 +26,6 @@ const createApplication = asyncHandler(async (req, res) => {
   }
 });
 
-
 // get application by id
 const getApplication = asyncHandler(async (req, res) => {
   const { applicationId } = req.params;

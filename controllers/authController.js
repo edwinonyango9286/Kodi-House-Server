@@ -12,6 +12,7 @@ const logger = require("../utils/logger");
 const _ = require("lodash");
 const Role = require("../models/roleModel");
 const sendSMS = require("../utils/sendSms");
+const passport = require("passport");
 
 //create user activation token
 const createActivationToken = (user) => {
@@ -77,7 +78,7 @@ const activateUserAccount = asyncHandler(async (req, res, next, roleName) => {
 
     // Fetch the role ObjectId based on the role name
     const role = await Role.findOne({ name: _.startCase(_.toLower(roleName)) });
-    if (!role) { return res.status(404).json({status: "FAILED",message: "Role not found."})}
+    if (!role) { return res.status(404).json({status: "FAILED",message: " User role not found."})}
     
     const user = await User.create({
     userName: _.startCase(_.toLower(userName)),email,password,termsAndConditionsAccepted,role: role._id});
@@ -88,15 +89,9 @@ const activateUserAccount = asyncHandler(async (req, res, next, roleName) => {
   }
 });
 
-//case admin
-const activateAdminAccount = (req, res, next) =>
-  activateUserAccount(req, res, next, "Admin");
-// case landlord
-const activateLandlordAccount = (req, res, next) =>
-  activateUserAccount(req, res, next, "Landlord");
-// case tenant
-const activateTenantAccount = (req, res, next) =>
-  activateUserAccount(req, res, next, "Tenant");
+const activateAdminAccount = (req, res, next) => activateUserAccount(req, res, next, "Admin");
+const activateLandlordAccount = (req, res, next) => activateUserAccount(req, res, next, "Landlord");
+const activateTenantAccount = (req, res, next) =>activateUserAccount(req, res, next, "Tenant");
 
 // for a landlord to start using his/her account the landlord should be verified
 const verifyLandlordAccount = asyncHandler(async (req, res) => {
@@ -149,6 +144,214 @@ const signInUser = asyncHandler(async (req, res, next, expectedRole) => {
 const signInAdmin = (req, res, next) => signInUser(req, res, next, "Admin");
 const signInLandlord = (req, res, next) => signInUser(req, res, next, "Landlord");
 const signInTenant = (req, res, next) => signInUser(req, res, next, "Tenant");
+
+const nodeEnvironment = process.env.NODE_ENV;
+passport.use(
+  new (require("passport-google-oauth20").Strategy)(
+    {
+      clientID: process.env.CLIENT_ID,
+      clientSecret: process.env.CLIENT_SECRET,
+      callbackURL: nodeEnvironment === "production" ? process.env.PROD_CALLBACK_URL : process.env.DEV_CALLBACK_URL,
+      passReqToCallback: true,
+      scope: ["profile", "email"],
+    },
+    async (req, accessToken, refreshToken, profile, done) => {
+      try {
+        // Check if user exists
+        let user = await User.findOne({ googleId: profile.id });
+        if (user) { return done(null, user)}
+
+        user = await User.findOne({ email: profile.emails[0].value });
+        if (user) {
+          user.googleId = profile.id;
+          user.userName = user.userName || profile.displayName;
+          user.avatar = user.avatar.secure_url ? user.avatar : { secure_url: profile.photos[0].value };
+          await user.save();
+          return done(null, user);
+        }
+
+        // Get landlordRole 
+         const userRole = await Role.findOne({ name:"Landlord" });
+         if(!userRole){ return done(new Error("User role not found"), false)}
+
+        const newUser = await User.create({
+          googleId: profile.id,
+          userName: profile.displayName,
+          email: profile.emails[0].value,
+          avatar: { secure_url: profile.photos[0].value },
+          firstName:profile.name.givenName,
+          secondName:profile.name.familyName,
+          role:userRole._id,
+        });
+
+        await newUser.save();
+        return done(null, newUser);
+      } catch (error) {
+        return done(error, false);
+      }
+    }
+  )
+);
+
+const googleAuthCallback = asyncHandler(async (req, res) => {
+  const user = req.user;
+
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: parseInt(process.env.REFRESH_TOKEN_MAX_AGE),
+  });
+
+  const userData = user.toObject();
+  delete userData.password;
+  delete userData.refreshToken;
+
+  const redirectURL = nodeEnvironment === "production" ? `${process.env.KODI_HOUSE_LANDLORDAPP_DEV_URL}/auth/callback` : `${process.env.ORIGIN_LANDLORDAPP_LOCAL_5173}/auth/callback`;
+  res.redirect(`${redirectURL}?user=${encodeURIComponent(JSON.stringify(userData))}&accessToken=${accessToken}`);
+});
+
+
+passport.use(
+  new (require("passport-facebook").Strategy)(
+    {
+      clientID: process.env.FACEBOOK_APP_ID,
+      clientSecret: process.env.FACEBOOK_APP_SECRET,
+      callbackURL: process.env.FACEBOOK_CALLBACK_URL,
+      profileFields: ["id", "displayName", "photos", "email"],
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      try {
+        let user = await User.findOne({ facebookId: profile.id });
+        if (user) {
+          return done(null, user);
+        }
+
+        user = await User.findOne({ email: profile.emails[0].value });
+
+        if (user) {
+          user.facebookId = profile.id;
+          user.userName = user.userName || profile.displayName;
+          user.avatar = user.avatar.secure_url
+            ? user.avatar
+            : { secure_url: profile.photos[0].value };
+          await user.save();
+          return done(null, user);
+        }
+
+        const newUser = await User.create({
+          facebookId: profile.id,
+          userName: profile.displayName,
+          email: profile.emails[0].value,
+          avatar: { secure_url: profile.photos[0].value },
+        });
+
+        return done(null, newUser);
+      } catch (error) {
+        return done(error, false);
+      }
+    }
+  )
+);
+
+passport.use(
+  new (require("passport-twitter").Strategy)(
+    {
+      consumerKey: process.env.TWITTER_CONSUMER_KEY,
+      consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
+      callbackURL: process.env.TWITTER_CALLBACK_URL,
+      includeEmail: true,
+    },
+    async (token, tokenSecret, profile, done) => {
+      try {
+        let user = await User.findOne({ twitterId: profile.id });
+        if (user) {
+          return done(null, user);
+        }
+
+        user = await User.findOne({ email: profile.emails[0].value });
+
+        if (user) {
+          user.twitterId = profile.id;
+          user.userName = user.userName || profile.displayName;
+          user.avatar = user.avatar.secure_url
+            ? user.avatar
+            : { secure_url: profile.photos[0].value };
+          await user.save();
+          return done(null, user);
+        }
+
+        const newUser = await User.create({
+          twitterId: profile.id,
+          userName: profile.displayName,
+          email: profile.emails[0].value,
+          avatar: { secure_url: profile.photos[0].value },
+        });
+
+        return done(null, newUser);
+      } catch (error) {
+        return done(error, false);
+      }
+    }
+  )
+);
+
+passport.use(
+  new (require("passport-apple").Strategy)(
+    {
+      clientID: process.env.APPLE_CLIENT_ID,
+      teamID: process.env.APPLE_TEAM_ID,
+      keyID: process.env.APPLE_KEY_ID,
+      privateKeyLocation: process.env.APPLE_PRIVATE_KEY_LOCATION,
+      callbackURL: process.env.APPLE_CALLBACK_URL,
+    },
+    async (accessToken, refreshToken, idToken, profile, done) => {
+      try {
+        let user = await User.findOne({ appleId: profile.id });
+        if (user) {
+          return done(null, user);
+        }
+
+        const email = profile.email || idToken.email;
+        user = await User.findOne({ email });
+
+        if (user) {
+          user.appleId = profile.id;
+          await user.save();
+          return done(null, user);
+        }
+
+        const newUser = await User.create({
+          appleId: profile.id,
+          email: email,
+        });
+
+        return done(null, newUser);
+      } catch (error) {
+        return done(error, false);
+      }
+    }
+  )
+);
+
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (error) {
+    done(error, false);
+  }
+});
 
 const refreshUserAccessToken = asyncHandler(async (req, res, next) => {
   try {
@@ -268,4 +471,4 @@ const logout = asyncHandler(async (req, res, next) => {
 });
 
 // so far so good => any error to be reported asap.
-module.exports = { registerNewUser,activateAdminAccount,activateTenantAccount,activateLandlordAccount,refreshUserAccessToken,signInAdmin,signInTenant,signInLandlord,updatePassword,passwordResetToken,resetPassword,verifyLandlordAccount,logout };
+module.exports = { registerNewUser,activateAdminAccount,activateTenantAccount,activateLandlordAccount,refreshUserAccessToken,signInAdmin,signInTenant,signInLandlord,updatePassword,passwordResetToken,resetPassword,verifyLandlordAccount,logout, googleAuthCallback };

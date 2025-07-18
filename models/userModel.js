@@ -38,6 +38,26 @@ const userSchema = new mongoose.Schema(
       minlength: 2,
       maxlength: 50,
     },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    facebookId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    twitterId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    appleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     email: {
       type: String,
       required: true,
@@ -75,13 +95,9 @@ const userSchema = new mongoose.Schema(
     avatar: {
       secure_url: {
         type: String,
-        default:
-          "https://www.hotelbooqi.com/wp-content/uploads/2021/12/128-1280406_view-user-icon-png-user-circle-icon-png.png",
       },
       public_id: {
         type: String,
-        default:
-          "https://www.hotelbooqi.com/wp-content/uploads/2021/12/128-1280406_view-user-icon-png-user-circle-icon-png.png",
       },
     },
     properties: [
@@ -157,7 +173,6 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
       select: false,
     },
     refreshToken: {
