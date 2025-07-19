@@ -158,10 +158,10 @@ passport.use(
     async (req, accessToken, refreshToken, profile, done) => {
       try {
         // Check if user exists
-        let user = await User.findOne({ googleId: profile.id });
+        let user = await User.findOne({ googleId: profile.id }).populate("role","name");
         if (user) { return done(null, user)}
 
-        user = await User.findOne({ email: profile.emails[0].value });
+        user = await User.findOne({ email: profile.emails[0].value }).populate("role","name");
         if (user) {
           user.googleId = profile.id;
           user.userName = user.userName || profile.displayName;
