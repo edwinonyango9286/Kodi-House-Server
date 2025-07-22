@@ -80,7 +80,6 @@
 //   })();
 // }
 
-
 const app = require("./app");
 const dotenv = require("dotenv");
 dotenv.config();
@@ -92,7 +91,7 @@ const { RedisStore } = require("rate-limit-redis");
 
 (async () => {
   const redisClient = createClient({
-    url: process.env.REDIS_URL || "redis://127.0.0.1:6379",
+    url: process.env.REDIS_URL,
     socket: {
       reconnectStrategy: (retries) => Math.min(retries * 100, 5000),
     },
