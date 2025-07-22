@@ -217,7 +217,6 @@ const googleAuthCallback = asyncHandler(async (req, res) => {
   res.redirect(`${redirectURL}?user=${encodeURIComponent(JSON.stringify(userData))}&accessToken=${accessToken}`);
 });
 
-
 passport.use(
   new (require("passport-facebook").Strategy)(
     {
@@ -317,7 +316,6 @@ passport.use(
         if (user) {
           return done(null, user);
         }
-
         const email = profile.email || idToken.email;
         user = await User.findOne({ email });
 

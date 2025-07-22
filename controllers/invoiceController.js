@@ -72,21 +72,15 @@ const updateAnInvoice = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-// all invoices excluding deleted invoices => specific to a particular landlord
 const getAllInvoices = expressAsyncHandler(async (req, res, next) => {
   try {
-
   const queryObject = { ...req.query };
   const excludeFields = ["page", "sort", "limit", "offset", "fields","search"];
   excludeFields.forEach((element) => delete queryObject[element]);
 
   let queryString = JSON.stringify(queryObject);
   queryString = queryString.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
-
-  // only admins and landlords can view invoices
   const userMakingRequest = await User.findOne({ _id:req.user._id}).populate("role","name");
-
-
   let query;
   let baseQuery = JSON.parse(queryString)
 
@@ -94,28 +88,22 @@ const getAllInvoices = expressAsyncHandler(async (req, res, next) => {
     const searchRegex = new RegExp(req.query.search,"i");
     baseQuery.$or =[{ invoiceNumber:searchRegex},{invoiceCategory:searchRegex},{status:searchRegex} ]
   }
-
   if( userMakingRequest && userMakingRequest.role.name === "Admin"){
     query = Invoice.find({...baseQuery, isDeleted: false, deletedAt: null}).populate({path:"createdBy", select:"userName"}).populate({ path: "tenant", select: "firstName secondName" }).populate({ path: "property", select: "name" }).populate({ path: "unit", select: "unitNumber" });
   }else {
-    // user making request is landlord
     query = Invoice.find({...baseQuery, isDeleted: false, deletedAt: null, createdBy:req.user._id}).populate({ path: "tenant", select: "firstName secondName" }).populate({ path: "property", select: "name" }).populate({ path: "unit", select: "unitNumber" });
   }
-
-  // sorting
   if (req.query.sort) {const sortBy = req.query.sort.split(",").join(" ");
     query = query.sort(sortBy);
   } else {
     query = query.sort("-createdAt");
   }
-  // field limiting
   if (req.query.fields) { 
     const fields = req.query.fields.split(",").join(" ");
     query = query.select(fields);
   } else {
     query = query.select("-__v");
   }
-  // pagination
   const limit = parseInt(req.query.limit, 10) || 10;
   const offset = parseInt(req.query.offset, 10) || 0;
   query = query.skip(offset).limit(limit);
@@ -130,6 +118,7 @@ const getAllInvoices = expressAsyncHandler(async (req, res, next) => {
     next(error)
   }
 });
+
 
 
 const deleteAnInvoice = expressAsyncHandler(async (req, res, next) => {

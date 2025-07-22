@@ -4,16 +4,16 @@ const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
-     createdBy: {
-         type: mongoose.Schema.Types.ObjectId,
-         ref: "User",
-         validate: {
-           validator: (id) => {
-             return mongoose.Types.ObjectId.isValid(id);
-           },
-           message: (props) => `${props} is not a valid object id.`,
-         },
-       },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: (id) => {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props} is not a valid object id.`,
+      },
+    },
     userName: {
       type: String,
       minlength: 2,
@@ -68,11 +68,11 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-    description:{
-      type:String,
-      trim:true,
-      minlength:2,
-      maxlength:50,
+    description: {
+      type: String,
+      trim: true,
+      minlength: 2,
+      maxlength: 50,
     },
     businessName: {
       type: String,
@@ -99,6 +99,9 @@ const userSchema = new mongoose.Schema(
       public_id: {
         type: String,
       },
+      asset_id: {
+        type: String,
+      },
     },
     properties: [
       {
@@ -113,13 +116,13 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
-    moveInDate:{
-      type:Date,
-      default:null
+    moveInDate: {
+      type: Date,
+      default: null,
     },
-    moveOutDate:{
-      type:Date,
-      default:null
+    moveOutDate: {
+      type: Date,
+      default: null,
     },
     units: [
       {
@@ -214,7 +217,9 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {return next();}
+  if (!this.isModified("password")) {
+    return next();
+  }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
@@ -226,7 +231,10 @@ userSchema.methods.isPasswordMatched = async function (enteredPassword) {
 
 userSchema.methods.createPasswordResetToken = async function () {
   const resetToken = crypto.randomBytes(32).toString("hex");
-  this.passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+  this.passwordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
   this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
   return resetToken;
 };

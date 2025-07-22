@@ -80,3 +80,7 @@
 {"_message":"Role validation failed","errors":{"createdBy":{"kind":"required","message":"Path `createdBy` is required.","name":"ValidatorError","path":"createdBy","properties":{"message":"Path `createdBy` is required.","path":"createdBy","type":"required"}}},"level":"error","message":"Role validation failed: createdBy: Path `createdBy` is required.","name":"ValidationError","timestamp":"2025-07-14 03:26:02"}
 {"level":"error","message":"Cast to ObjectId failed for value \"[ '687513f4921ff876ad4eb772', '68751585921ff876ad4eba97' ]\" (type Array) at path \"_id\" for model \"Property\"","timestamp":"2025-07-15 03:11:02"}
 {"level":"error","message":"result is not defined","timestamp":"2025-07-15 03:14:03"}
+{"http_code":499,"level":"error","message":"Error processing Gallery image_2.jpg: Request Timeout","name":"TimeoutError","timestamp":"2025-07-21 06:50:37"}
+{"http_code":499,"level":"error","message":"Upload process failed: Request Timeout","name":"TimeoutError","timestamp":"2025-07-21 06:50:37"}
+{"http_code":499,"level":"error","message":"Error processing Gallery image_2.jpg: Request Timeout","name":"TimeoutError","timestamp":"2025-07-21 06:51:15"}
+{"http_code":499,"level":"error","message":"Upload process failed: Request Timeout","name":"TimeoutError","timestamp":"2025-07-21 06:51:15"}

@@ -4,7 +4,6 @@ const { verifyUserToken } = require("../middlewares/authMiddleware");
 const passport = require("passport");
 
 const router = express.Router();
-const nodeEnvironment = process.env.NODE_ENV
 
 router.post("/register", registerNewUser);
 router.post("/activate-landlord", activateLandlordAccount);

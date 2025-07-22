@@ -47,6 +47,19 @@ const updateUserProfile = expressAsyncHandler(
   }
 );
 
+const updateUserAvatar = expressAsyncHandler(async(req,res,next)=>{
+  try {
+    const {userId,avatar}  = req.body;
+    if(!avatar){ return res.status(400).json({ message:"No user avatar selected."})};
+    const updateUser = await User.findOneAndUpdate({_id:userId },{ ...req.body, avatar:avatar},{ new:true, runValidators:true });
+    if(!updateUser){
+      return res.status(404).json({ status:"FAILED", message:"User not found."})
+    }
+     return res.status(200).json({ status:"SUCCESS", message:"User avatar updated successfully."})
+  } catch (error) {
+    next(error)
+  }
+});
 
 const listUsers = expressAsyncHandler(async (req, res, next) => {
   try {
@@ -58,16 +71,15 @@ const listUsers = expressAsyncHandler(async (req, res, next) => {
     const userGroupRole =  await Role.findOne({ name: _.startCase(_.toLower(req.query.role))});
     console.log(userGroupRole.name,"=>userRole")
 
-    if(userGroupRole){
-      roleFilter.role = userGroupRole._id
-      delete queryObject.role
-    }
+    if(userGroupRole){ roleFilter.role = userGroupRole._id, delete queryObject.role }
 
     let queryStr = JSON.stringify(queryObject);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    const userMakingRequest =  await User.findOne({ _id:req.user._id}).populate("role", "name");
-    console.log(userMakingRequest.role.name,"=>userMakingRequest");
+    let userMakingRequest
+    if(req.user){
+      userMakingRequest =  await User.findOne({ _id:req.user._id}).populate("role", "name");
+    } 
 
      let query;
      const baseQuery = JSON.parse(queryStr);
@@ -77,12 +89,13 @@ const listUsers = expressAsyncHandler(async (req, res, next) => {
       baseQuery.$or =[{userName:searchRegex},{firstName:searchRegex}, {lastName:searchRegex}, {secondName:searchRegex},{email:searchRegex}, {phoneNumber:searchRegex},{status:searchRegex}]
      }
 
-     if( userMakingRequest && userMakingRequest.role.name ==="Landlord"){
+     if(userMakingRequest.role.name ==="Landlord"){
       query = User.find({...baseQuery, ...roleFilter, isDeleted: false, deletedAt: null, createdBy:req.user._id}).populate("role","name").populate("properties", "name").populate("units", "name")
      } else {
       query = User.find({...baseQuery, ...roleFilter, isDeleted: false, deletedAt: null,}).populate("role","name").populate("properties","name").populate("units","unitNumber")
      }
      
+    query = query.sort({ createdAt:-1 })
     if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
     if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
     
@@ -166,4 +179,4 @@ const listSystemUsers =  expressAsyncHandler( async(req,res,next)=>{
 })
 
 
-module.exports = {me,updateUserProfile, listUsers, createSystemUser, listSystemUsers , listLandlordUsers};
+module.exports = {me,updateUserProfile, listUsers, createSystemUser, listSystemUsers , listLandlordUsers, updateUserAvatar};

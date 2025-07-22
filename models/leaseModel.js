@@ -65,7 +65,7 @@ const leaseSchema = new mongoose.Schema(
       required: true,
     },
     serviceCharge: {
-      type: Amount,
+      type: String,
       required: true,
     },
 
@@ -101,7 +101,7 @@ const leaseSchema = new mongoose.Schema(
     },
 
     endDate: {
-      tyep: Date,
+      type: Date,
       required: true,
     },
     leaseAmount: {
@@ -132,7 +132,6 @@ const leaseSchema = new mongoose.Schema(
       enum: ["Piad", "Draft", "Expired", "Pending"],
     },
   },
-
   {
     timestamps: true,
   }

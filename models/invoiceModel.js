@@ -37,14 +37,7 @@ const InvoiceSchema = new mongoose.Schema(
     recurringStatus: {
       type: String,
       required: true,
-      enum: [
-        "Yes",
-        "No",
-        "Every 1 Month",
-        "Every 3 Months",
-        "Every 6 Months",
-        "Every 12 Months",
-      ],
+      enum: [ "Yes","No","Every 1 Month","Every 3 Months","Every 6 Months","Every 12 Months" ],
     },
     tenantsNote: {
       type: String,
@@ -128,7 +121,6 @@ const InvoiceSchema = new mongoose.Schema(
       ref: "User",
     },
   },
-
   {
     timestamps: true,
   }

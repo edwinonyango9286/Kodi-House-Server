@@ -13,7 +13,6 @@ const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 
 // swagger definition
-
 const swaggerOptions = {
   swaggerDefinition: {
     openapi: "3.1.0",
@@ -52,7 +51,8 @@ const transactionRouter = require("./routes/transactionRoutes")
 const categoriesRouter = require("./routes/categoryRoutes")
 const tagRouter = require("./routes/tagRoutes")
 const invoiceCategoryRouter = require("./routes/invoiceCategoryRoutes")
-const imageUploadRouter = require("./routes/imageUploadRoutes")
+const imageUploadRouter = require("./routes/imageUploadRoutes");
+const leaseRouter = require("./routes/leaseRoutes")
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -119,5 +119,6 @@ app.use("/api/v1/categories",categoriesRouter)
 app.use("/api/v1/tags",tagRouter)
 app.use("/api/v1/invoice-categories", invoiceCategoryRouter)
 app.use("/api/v1/upload-images", imageUploadRouter)
+app.use("/api/v1/leases", leaseRouter)
 
 module.exports = app;

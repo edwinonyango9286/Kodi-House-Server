@@ -5,13 +5,11 @@ const router = express.Router();
 
 router.post("/property",verifyUserToken, checkUserRole(["Landlord"]),addAProperty);
 router.get("/property/:propertyId",getApropertyById);
-router.get("/properties", getAllProperties);
-
+router.get("/properties",verifyUserToken,checkUserRole(["Landlord","Admin"]),getAllProperties);
 router.put("/update-property/:propertyId",verifyUserToken, checkUserRole(["Landlord"]), updateAproperty);
 router.patch("/delete-a-property/:propertyId", verifyUserToken, checkUserRole(["Landlord","Admin"]), deleteAProperty);
 router.patch("/assign_property_to_a_tenant/:propertyId", verifyUserToken, checkUserRole(["Landlord"]), asignPropertyToAtenant);
 router.patch("/vacate_tenant_from_a_property/:propertyId",verifyUserToken, checkUserRole(["Landlord"]), vacateATenantFromAProperty);
-// bulk delete  proprties 
 router.patch("/properties/bulk-delete", verifyUserToken, checkUserRole(["Admin"]), bulkDeleteProperties )
 
 module.exports = router;
