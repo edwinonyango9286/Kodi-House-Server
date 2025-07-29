@@ -84,3 +84,5 @@
 {"http_code":499,"level":"error","message":"Upload process failed: Request Timeout","name":"TimeoutError","timestamp":"2025-07-21 06:50:37"}
 {"http_code":499,"level":"error","message":"Error processing Gallery image_2.jpg: Request Timeout","name":"TimeoutError","timestamp":"2025-07-21 06:51:15"}
 {"http_code":499,"level":"error","message":"Upload process failed: Request Timeout","name":"TimeoutError","timestamp":"2025-07-21 06:51:15"}
+{"level":"error","timestamp":"2025-07-23 01:34:07"}
+{"level":"error","timestamp":"2025-07-23 01:37:53"}

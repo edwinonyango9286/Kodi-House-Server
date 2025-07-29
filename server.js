@@ -20,24 +20,10 @@
 //   const fs = require("fs");
 //   const path = require("path");
 //   const rateLimit = require("express-rate-limit");
-//   const { createClient } = require("redis");
-
+//   const redisClient = require("./config/redis");
 //   const { RedisStore } = require("rate-limit-redis");
 
 //   (async () => {
-//     const redisClient = createClient({
-//       url: process.env.REDIS_URL || "redis://127.0.0.1:6379",
-//       socket: {
-//         reconnectStrategy: (retries) => Math.min(retries * 100, 5000),
-//       },
-//     });
-
-//     redisClient.on("error", (err) => {
-//       console.error("Redis Client Error", err);
-//     });
-
-//     await redisClient.connect();
-
 //     const uploadsDir = path.join(__dirname, "excelUploads");
 //     if (!fs.existsSync(uploadsDir)) {
 //       fs.mkdirSync(uploadsDir);
@@ -86,28 +72,15 @@ dotenv.config();
 const fs = require("fs");
 const path = require("path");
 const rateLimit = require("express-rate-limit");
-const { createClient } = require("redis");
+const redisClient = require("./config/redis");
 const { RedisStore } = require("rate-limit-redis");
+const helmet = require("helmet");
 
 (async () => {
-  const redisClient = createClient({
-    url: process.env.REDIS_URL,
-    socket: {
-      reconnectStrategy: (retries) => Math.min(retries * 100, 5000),
-    },
-  });
-
-  redisClient.on("error", (err) => {
-    console.error("Redis Client Error", err);
-  });
-
-  await redisClient.connect();
-
   const uploadsDir = path.join(__dirname, "excelUploads");
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir);
   }
-
   let store;
   try {
     store = new RedisStore({
@@ -123,17 +96,16 @@ const { RedisStore } = require("rate-limit-redis");
     windowMs: 15 * 60 * 1000,
     max: 100,
     message: "Too many requests from this IP, please try again later.",
-    headers: true,
+    standardHeaders: true,
+    legacyHeaders: false,
   });
 
+  app.use(helmet())
   app.use(limiter);
 
   const PORT = process.env.PORT || 4000;
   const dbConnection = require("./config/dbConnection");
-  const {
-    notFound,
-    errorHandlerMiddleware,
-  } = require("./middlewares/errorHandlerMiddelware");
+  const { notFound, errorHandlerMiddleware } = require("./middlewares/errorHandlerMiddelware");
 
   app.use(notFound);
   app.use(errorHandlerMiddleware);

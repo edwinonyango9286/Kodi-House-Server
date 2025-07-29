@@ -47,17 +47,17 @@ const permissionRouter = require("./routes/permissionRoutes");
 const propertyTypeRouter = require("./routes/propertyTypeRoutes");
 const propertyTagRouter = require("./routes/propertyTagRoutes");
 const supportTicketRouter = require("./routes/supportTicketRoutes");
-const transactionRouter = require("./routes/transactionRoutes")
-const categoriesRouter = require("./routes/categoryRoutes")
-const tagRouter = require("./routes/tagRoutes")
-const invoiceCategoryRouter = require("./routes/invoiceCategoryRoutes")
+const transactionRouter = require("./routes/transactionRoutes");
+const categoriesRouter = require("./routes/categoryRoutes");
+const tagRouter = require("./routes/tagRoutes");
+const invoiceCategoryRouter = require("./routes/invoiceCategoryRoutes");
 const imageUploadRouter = require("./routes/imageUploadRoutes");
-const leaseRouter = require("./routes/leaseRoutes")
+const leaseRouter = require("./routes/leaseRoutes");
 
 app.use(express.json({ limit: "50mb" }));
 
 const origins = [
-  process.env.ORIGIN_LANDLORDAPP_LOCAL_5173,  
+  process.env.ORIGIN_LANDLORDAPP_LOCAL_5173,
   process.env.ORIGIN_LOCALHOST_3001,
   process.env.ORIGIN_LOCALHOST_4000,
   process.env.ORIGIN_LOCALHOST_ADMIN,
@@ -68,7 +68,9 @@ const origins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if(!origin){return callback(null,true)};
+      if (!origin) {
+        return callback(null, true);
+      }
       if (origins.indexOf(origin) !== -1 || !origin) {
         callback(null, true);
       } else {
@@ -79,6 +81,7 @@ app.use(
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
     exposedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 200,
   })
 );
 
@@ -114,11 +117,11 @@ app.use("/api/v1/permissions", permissionRouter);
 app.use("/api/v1/property-types", propertyTypeRouter);
 app.use("/api/v1/property-tags", propertyTagRouter);
 app.use("/api/v1/support-tickets", supportTicketRouter);
-app.use("/api/v1/transaction",transactionRouter )
-app.use("/api/v1/categories",categoriesRouter)
-app.use("/api/v1/tags",tagRouter)
-app.use("/api/v1/invoice-categories", invoiceCategoryRouter)
-app.use("/api/v1/upload-images", imageUploadRouter)
-app.use("/api/v1/leases", leaseRouter)
+app.use("/api/v1/transaction", transactionRouter);
+app.use("/api/v1/categories", categoriesRouter);
+app.use("/api/v1/tags", tagRouter);
+app.use("/api/v1/invoice-categories", invoiceCategoryRouter);
+app.use("/api/v1/upload-images", imageUploadRouter);
+app.use("/api/v1/leases", leaseRouter);
 
 module.exports = app;

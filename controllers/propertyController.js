@@ -27,6 +27,8 @@ const addAProperty = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
+
+
 const updateAproperty = expressAsyncHandler(async (req, res, next) => {
   try {
     const { _id } = req.user;
@@ -196,16 +198,23 @@ const deleteAProperty = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
+
+// only admin should be able to restore deleted property
 const restoreProperty = expressAsyncHandler( async (req,res,next)=>{
   try {
-    const propertyId  = req.body.propertyId;
+    const propertyId  = req.params.propertyId;
     validateMongoDbId(propertyId);
     if(!propertyId){
       return res.status(400).json({ message:"Property Id not provided."});
     }
-    const restoredProperty = Property.findOneAndUpdate({ _id:propertyId })
+    const restoredProperty = await Property.findOneAndUpdate({ _id:propertyId, isDeleted:true, deletedAt:{ $ne:null } },{ isDeleted:false, deletedAt:null }, { new:true, runValidators:true});
+    if(!restoredProperty){
+      return res.status(404).json({ status:"FALSE", message:"Property not found."})
+    }
+    return res.status(200).json({ status:"SUCCESS", message:"Property restored successfully.", data:restoredProperty})
   } catch (error) {
-    
+    logger.error(error)
+    next(error)
   }
 })
 
@@ -230,4 +239,6 @@ const bulkDeleteProperties = expressAsyncHandler(async (req,res,next)=>{
 
 
 
-module.exports = { addAProperty, getApropertyById, getAllProperties,updateAproperty,deleteAProperty, asignPropertyToAtenant,vacateATenantFromAProperty, bulkDeleteProperties};
+
+
+module.exports = { addAProperty, getApropertyById, getAllProperties,updateAproperty,deleteAProperty, asignPropertyToAtenant,vacateATenantFromAProperty, bulkDeleteProperties, restoreProperty};
