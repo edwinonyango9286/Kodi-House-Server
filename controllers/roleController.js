@@ -48,7 +48,6 @@ const grantPermissionToARole = expressAsyncHandler(async (req, res, next) => {
 
 // All the admins and landlords can add roles
 const getARole = expressAsyncHandler(async (req, res, next) => {
-  try {
     const { roleId } = req.params;
     console.log(roleId,"=>roleId")
     validateMongoDbId(roleId);
@@ -56,14 +55,10 @@ const getARole = expressAsyncHandler(async (req, res, next) => {
     const role = await Role.findOne({_id: roleId, isDeleted: false, deletedAt: null }).populate({ path: "createdBy", select: "userName" }).populate({ path: "permissions"});
     if (!role) { return res.status(404).json({ status: "FAILED", message: "Role not found." })}
     return res.status(200).json({ status: "SUCCESS", data: role });
-  } catch (error) {
-    next(error);
-  }
 });
 
 // update a role
 const updateARole = expressAsyncHandler(async (req, res) => {
-  try {
     const { roleId } = req.params;
     validateMongoDbId(roleId);
     const { name, description, status } = req.body;
@@ -71,22 +66,13 @@ const updateARole = expressAsyncHandler(async (req, res) => {
     const updatedRole = await Role.findOneAndUpdate({ _id: roleId },{...req.body, name: _.startCase(_.toLower(name)), description: descriptionFormater(description)}, { new: true, runValidators: true });
     if (!updatedRole) { return res.status(404).json({ status: "FAILED", message: "Role not found." })}
     return res.status(200).json({status: "SUCCESS", message: "Role update successfully.", data:updatedRole, });
-  } catch (error) {
-    logger.error();
-    next(error);
-  }
 });
 
 const getAllRoles = expressAsyncHandler(async (req, res, next) => {
-  try {
     const roles = await Role.find({isDeleted: false,deletedAt: null,})
       .populate({ path: "createdBy", select: "userName" })
       .populate({ path: "permissions", select: "permissionName" });
     return res.status(200).json({ status: "SUCCESS", message:"Roles listed successfully.", data: roles });
-  } catch (error) {
-    logger.error(error.message);
-    next(error);
-  }
 });
 
 const deleteARole = expressAsyncHandler(async (req, res, next) => {

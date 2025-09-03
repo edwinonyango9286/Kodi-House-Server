@@ -183,7 +183,6 @@ passport.use(
           secondName:profile.name.familyName,
           role:userRole._id,
         });
-
         await newUser.save();
         return done(null, newUser);
       } catch (error) {

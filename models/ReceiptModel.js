@@ -13,7 +13,6 @@ const receiptSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid objectId`,
       },
     },
-
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -24,22 +23,9 @@ const receiptSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid objectId`,
       },
     },
-
     invoice: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Invoice",
-      required: true,
-      validate: {
-        validator: function (id) {
-          return mongoose.Schema.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props.value} is not a valid objectId`,
-      },
-    },
-
-    tenant: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Tenant",
       required: true,
       validate: {
         validator: function (id) {
@@ -48,7 +34,17 @@ const receiptSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid objectId`,
       },
     },
-
+    tenant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
     property: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Property",
@@ -60,11 +56,9 @@ const receiptSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid objectId`,
       },
     },
-
     unit: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Unit",
-      required: true,
       validate: {
         validator: function (id) {
           return mongoose.Types.ObjectId.isValid(id);
@@ -72,12 +66,10 @@ const receiptSchema = new mongoose.Schema(
         message: (props) => `${props.value} is not a valid objectId`,
       },
     },
-
     transactionId: {
       type: String,
       required: true,
     },
-
     description: {
       type: String,
       required: true,
@@ -91,11 +83,9 @@ const receiptSchema = new mongoose.Schema(
     attachment: {
       secure_url: {
         type: String,
-        required: true,
       },
       public_id: {
         type: String,
-        required: true,
       },
     },
     paymentMode: {
@@ -104,7 +94,25 @@ const receiptSchema = new mongoose.Schema(
       required: true,
       validate: {
         validator: function (id) {
-          return mongoose.Schema.Types.ObjectId.isValid(id);
+          return mongoose.Types.ObjectId.isValid(id);
+        },
+        message: (props) => `${props.value} is not a valid objectId`,
+      },
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      validate: {
+        validator: function (id) {
+          return mongoose.Types.ObjectId.isValid(id);
         },
         message: (props) => `${props.value} is not a valid objectId`,
       },

@@ -35,7 +35,6 @@ const updateAproperty = expressAsyncHandler(async (req, res, next) => {
     const { propertyId } = req.params;
     validateMongoDbId(_id);
     validateMongoDbId(propertyId);
-
     const {name,category,type,rent,briefDescription,images,location,currentStatus} = req.body;
     if ( !name || !category ||!type ||!rent || !briefDescription || !images || !location || !currentStatus) {
       return res.status(404).json({ status: "FAILED", message: "Please provide all the required fields."});
@@ -63,7 +62,6 @@ const getApropertyById = expressAsyncHandler(async (req, res, next) => {
   }
 });
 
-
 const getAllProperties = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
@@ -72,40 +70,68 @@ const getAllProperties = expressAsyncHandler(async (req, res, next) => {
 
     let queryStr = JSON.stringify(queryObject);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
-
-    const userMakingRequest = await User.findOne({ _id: req.user._id }).populate("role", "name");
-    if(!userMakingRequest){
-      return res.status(404).json({ status:"FAILED", message:"User not found." })
+    const userMakingRequest = await User.findById(req.user._id).populate({path:"role", select:"_id, name"});
+    if (!userMakingRequest) {
+      return res.status(404).json({ status: "FAILED", message: "User not found." });
     }
-    let query;
     let baseQuery = JSON.parse(queryStr);
 
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
-      baseQuery.$or = [ { name: searchRegex } , { type: searchRegex },{ category: searchRegex },{currentStatus: searchRegex}];
+      baseQuery.$or = [
+        { name: searchRegex },
+        { type: searchRegex },
+        { category: searchRegex },
+        { currentStatus: searchRegex }
+      ];
     }
 
-    if( userMakingRequest && userMakingRequest.role.name === "Admin") {
-      query = Property.find({...baseQuery}).populate({ path: "createdBy", select: "userName" }).populate("currentOccupant", "firstName secondName").sort({ createdAt:-1});
-    } else if ( userMakingRequest && userMakingRequest.role.name === "Landlord") { 
-      query = Property.find({ ...baseQuery, isDeleted: false, deletedAt: null, createdBy: req?.user?._id}).populate("currentOccupant", "firstName secondName");
+    let roleConditions = {};
+    if (userMakingRequest.role.name === "Landlord") {
+      roleConditions = { isDeleted: false, deletedAt: null, createdBy: req?.user?._id };
+    } else if (userMakingRequest.role.name !== "Admin") {
+      roleConditions = { isDeleted: false, deletedAt: null, currentOccupant: null };
+    }
+    const finalQuery = { ...baseQuery, ...roleConditions };
+    let query = Property.find(finalQuery);
+    let countQuery = Property.find(finalQuery);
+    if (userMakingRequest.role.name === "Admin") {
+      query = query.populate({ path: "createdBy", select: "userName" }).populate("currentOccupant", "firstName secondName");
+    } else if (userMakingRequest.role.name === "Landlord") {
+      query = query.populate("currentOccupant", "firstName secondName");
     } else {
-      query = Property.find({...baseQuery, isDeleted: false, deletedAt: null, currentOccupant: null }).populate({ path: "createdBy", select: "userName" });
+      query = query.populate({ path: "createdBy", select: "userName" });
     }
     
-    query = query.sort({ createdAt:-1})
-    if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
-    if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
-    
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
-    query = query.skip(offset).limit(limit);
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort({ createdAt: -1 });
+    }
 
-    const properties = await query;
-    const totalCount = await Property.countDocuments(query.getFilter()); 
+    if (req.query.fields) {
+      const fields = req.query.fields.split(",").join(" ");
+      query = query.select(fields);
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    query = query.skip(skip).limit(limit);
+    const [properties, totalCount] = await Promise.all([query.exec(), countQuery.countDocuments()]);
     const totalPages = Math.ceil(totalCount / limit);
 
-    return res.status(200).json({ status: "SUCCESS",  message: "Properties listed successfully.",  data: properties, totalCount,  totalPages,  limit,  offset  });
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Properties listed successfully.",
+      data: properties,
+      totalCount,
+      totalPages,
+      currentPage: page,
+      limit
+    });
   } catch (error) {
     next(error);
   }

@@ -6,35 +6,27 @@ const transactionSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      validate: {
-        validator: (id) => {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props} is not a valid object Id.`,
-      },
     },
     transactionName: {
       type: String,
       default: "RentPayment",
     },
     amount: {
-      type: String,
-      required: "true",
+      type: Number,
+      required: true,
+      min:0
     },
     transactionId: {
       type: String,
       required: true,
     },
-
     transactionDate: {
       type: Date,
       required: true,
-      default: Date.now(),
     },
-
     status: {
       type: String,
-      enum: ["pending", "completed", "failed", "refunded"],
+      enum: ["pending", "completed", "failed", "canceled", "refunded"],
     },
     isDeleted: {
       type: Boolean,
@@ -43,12 +35,6 @@ const transactionSchema = mongoose.Schema(
     deletedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      validate: {
-        validator: (id) => {
-          return mongoose.Types.ObjectId.isValid(id);
-        },
-        message: (props) => `${props} is not a valid object id`,
-      },
     },
     deletedAt: {
       type: Date,
@@ -57,11 +43,6 @@ const transactionSchema = mongoose.Schema(
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-    },
-
-    updateAt: {
-      type: Date,
-      default: null,
     },
   },
   {

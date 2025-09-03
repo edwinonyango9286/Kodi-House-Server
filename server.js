@@ -83,11 +83,8 @@ const helmet = require("helmet");
   }
   let store;
   try {
-    store = new RedisStore({
-      sendCommand: (...args) => redisClient.sendCommand(args),
-    });
+    store = new RedisStore({ sendCommand: (...args) => redisClient.sendCommand(args)});
   } catch (err) {
-    console.error("Redis store failed, falling back to memory");
     store = new rateLimit.MemoryStore();
   }
 
@@ -111,7 +108,5 @@ const helmet = require("helmet");
   app.use(errorHandlerMiddleware);
 
   dbConnection();
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
+  app.listen(PORT, () => {console.log(`Server is running on port ${PORT}`)});
 })();

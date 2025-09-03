@@ -53,6 +53,7 @@ const tagRouter = require("./routes/tagRoutes");
 const invoiceCategoryRouter = require("./routes/invoiceCategoryRoutes");
 const imageUploadRouter = require("./routes/imageUploadRoutes");
 const leaseRouter = require("./routes/leaseRoutes");
+const receiptRouter = require("./routes/receiptRoutes");
 
 app.use(express.json({ limit: "50mb" }));
 
@@ -123,5 +124,6 @@ app.use("/api/v1/tags", tagRouter);
 app.use("/api/v1/invoice-categories", invoiceCategoryRouter);
 app.use("/api/v1/upload-images", imageUploadRouter);
 app.use("/api/v1/leases", leaseRouter);
+app.use("/api/v1/receipts", receiptRouter)
 
 module.exports = app;

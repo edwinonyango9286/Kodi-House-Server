@@ -16,10 +16,10 @@ redisClient.on("error", (err) => {
     await redisClient.connect();
     const pong =  await redisClient.ping();
     if(pong === "PONG"){
-      console.log("✅ Redis connection verified.");
+      console.log("Redis connection successful.");
     }
   } catch (error) {
-    console.log("❌ Redis connection failed:", err.message);
+    console.log("Redis connection failed:", err.message);
   }
 })();
 
