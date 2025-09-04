@@ -6,7 +6,8 @@ const _ = require("lodash");
 const User = require("../models/userModel");
 const sendMail = require("../utils/sendMails");
 const { generateUserPassword } = require("../utils/generateUserPassword");
-const Role = require("../models/roleModel")
+const Role = require("../models/roleModel");
+const { query } = require("express");
 
 
 // get user profile
@@ -64,56 +65,95 @@ const updateUserAvatar = expressAsyncHandler(async(req,res,next)=>{
 const listUsers = expressAsyncHandler(async (req, res, next) => {
   try {
     const queryObject = { ...req.query };
-    const excludeFields = ["page", "sort", "limit", "offset", "fields","search"];
+    const excludeFields = ["page", "sort", "limit", "offset", "fields", "search"];
     excludeFields.forEach((el) => delete queryObject[el]);
-    
-    const roleFilter = { }
-    const userGroupRole =  await Role.findOne({ name: _.startCase(_.toLower(req.query.role))});
-    console.log(userGroupRole.name,"=>userRole")
 
-    if(userGroupRole){ roleFilter.role = userGroupRole._id, delete queryObject.role }
+    const roleFilter = {};
+    const userGroupRole = await Role.findOne({ name: _.startCase(_.toLower(req.query.role)) });
+    if (!userGroupRole) {
+      return res.status(404).json({ status: 'FAILED', message: "Role not found." });
+    }
+    if (userGroupRole) {
+      roleFilter.role = userGroupRole._id;
+      delete queryObject.role;
+    }
 
-    let queryStr = JSON.stringify(queryObject);
-    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+    let userMakingRequest;
+    if (req.user) {
+      userMakingRequest = await User.findOne({ _id: req.user._id }).populate("role", "name");
+    }
 
-    let userMakingRequest
-    if(req.user){
-      userMakingRequest =  await User.findOne({ _id:req.user._id}).populate("role", "name");
-    } 
+    if (!userMakingRequest || !userMakingRequest.role) {
+      return res.status(403).json({ status: "FAILED", message: "Unauthorized or role not found." });
+    }
 
-     let query;
-     const baseQuery = JSON.parse(queryStr);
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, "i");
+      queryObject.$or = [
+        { userName: searchRegex },
+        { firstName: searchRegex },
+        { lastName: searchRegex },
+        { secondName: searchRegex },
+        { email: searchRegex },
+        { phoneNumber: searchRegex },
+        { status: searchRegex }
+      ];
+    }
 
-     if(req.query.search) {
-      const searchRegex = new RegExp(req.query.search,"i");
-      baseQuery.$or =[{userName:searchRegex},{firstName:searchRegex}, {lastName:searchRegex}, {secondName:searchRegex},{email:searchRegex}, {phoneNumber:searchRegex},{status:searchRegex}]
-     }
+    const baseQuery = { ...queryObject, ...roleFilter, isDeleted: false, deletedAt: null };
 
-     if(userMakingRequest.role.name ==="Landlord"){
-      query = User.find({...baseQuery, ...roleFilter, isDeleted: false, deletedAt: null, createdBy:req.user._id}).populate("role","name").populate("properties", "name").populate("units", "name")
-     } else {
-      query = User.find({...baseQuery, ...roleFilter, isDeleted: false, deletedAt: null,}).populate("role","name").populate("properties","name").populate("units","unitNumber")
-     }
-     
-    query = query.sort({ createdAt:-1 })
-    if (req.query.sort) query = query.sort(req.query.sort.split(",").join(" "));
-    if (req.query.fields) query = query.select(req.query.fields.split(",").join(" "));
-    
+    let query;
+    if (userMakingRequest.role.name === "Landlord") {
+      query = User.find({ ...baseQuery, createdBy: req.user._id })
+        .populate("role", "_id name")
+        .populate("properties", "_id name")
+        .populate("units", "_id name");
+    } else if (userMakingRequest.role.name === "Admin") {
+      query = User.find(baseQuery)
+        .populate("role", "_id name")
+        .populate("properties", "_id name")
+        .populate("units", "_id unitNumber");
+    } else {
+      return res.status(403).json({ status: "FAILED", message: "You do not have permission to view users." });
+    }
+
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort({ createdAt: -1 });
+    }
+
+    if (req.query.fields) {
+      query = query.select(req.query.fields.split(",").join(" "));
+    }
+
+    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0) 
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
     query = query.skip(offset).limit(limit);
 
-    
-    const users = await query
-    const totalCount = await User.countDocuments(query);
-    const totalPages = Math.ceil(totalCount/limit)
+    const countQuery = User.find(baseQuery);
 
-  
-   return res.status(200).json({status: "SUCCESS", message:"Users listed successfully.", data: users, totalCount,totalPages,limit, offset });
+    const [users, totalCount] = await Promise.all([query.exec(), countQuery.countDocuments()]);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Users listed successfully.",
+      data: users,
+      totalCount,
+      totalPages,
+      currentPage: page,
+      limit,
+      offset,
+    });
   } catch (error) {
     next(error);
   }
 });
+
 
 // list landlord users
 
@@ -166,17 +206,67 @@ const createSystemUser  = expressAsyncHandler(async (req, res, next) => {
 
 
 // lists all system users
-const listSystemUsers =  expressAsyncHandler( async(req,res,next)=>{
+const listSystemUsers = expressAsyncHandler(async (req, res, next) => {
   try {
-    const allUser = await User.find({ isDeleted:false, deletedAt:null}).populate("role", "name").populate("createdBy", "userName")
-    const systemUser = allUser.filter((user)=>user.role && ["Editor","Author"].includes(user.role.name)).reverse()
-    if(systemUser){
-      return res.status(200).json({ status:"SUCCESS", message:"Users listed successfully.", data:systemUser})
+    const queryObject = { ...req.query };
+    const excludedFields = ["page", "limit", "sort", "offset", "fields", "search"];
+    excludedFields.forEach((el) => delete queryObject[el]);
+    const roles = ["Editor", "Author"];
+    const roleDocuments = await Role.find({ name: { $in: roles } });
+    const roleIds = roleDocuments.map(role => role._id);
+    
+    queryObject.role = { $in: roleIds };
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, "i");
+      queryObject.$or = [
+        { userName: searchRegex },
+        { firstName: searchRegex },
+        { lastName: searchRegex },
+        { secondName: searchRegex },
+        { email: searchRegex },
+        { phoneNumber: searchRegex },
+        { status: searchRegex }
+      ];
     }
+
+    let query = User.find(queryObject).populate({ path: "role", select: "_id name" });
+    let countQuery = User.find(queryObject);
+
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort({ createdAt: -1 });
+    }
+
+    if (req.query.fields) {
+      const fields = req.query.fields.split(",").join(" ");
+      query = query.select(fields);
+    } else {
+      query = query.select("-__v -password");
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    query = query.skip(skip).limit(limit);
+
+    const [users, totalCount] = await Promise.all([query.exec(), countQuery.countDocuments()]);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return res.status(200).json({
+      status: "SUCCESS",
+      message: "Users listed successfully.",
+      data: users,
+      totalCount,
+      currentPage: page,
+      totalPages,
+      limit
+    });
   } catch (error) {
-    next(error)
+    next(error);
   }
-})
+});
 
 
 module.exports = {me,updateUserProfile, listUsers, createSystemUser, listSystemUsers , listLandlordUsers, updateUserAvatar};

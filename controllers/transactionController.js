@@ -52,7 +52,6 @@ const listAllTransactions =  expressAsyncHandler( async (req,res,next)=>{
         }else if(userFetchingTransactions === "Tenant"){
             roleCondition = { transactionBy:req.user._id, isDeleted:false }
         }
-
         const finalQuery = {...queryObject, ...roleCondition };
         let query = Transaction.find(finalQuery);
         let countQuery = Transaction.find(finalQuery)
@@ -70,11 +69,12 @@ const listAllTransactions =  expressAsyncHandler( async (req,res,next)=>{
         } else {
             query = query.sort({ createdAt: -1 });
         }
-
          if (req.query.fields) {
-            const fields = req.query.fields.split(",").join(" ");
-            query = query.select(fields);
-        }
+          const fields = req.query.fields.split(",").join(" ");
+          query = query.select(fields);
+         } else{
+          query =  query.select("-__v");
+         }
 
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
@@ -98,7 +98,8 @@ const listAllTransactions =  expressAsyncHandler( async (req,res,next)=>{
         // logger.error(error.message);
         next(error)
     }
-
 })
+
+
 
 module.exports = {createATransaction, listAllTransactions}
