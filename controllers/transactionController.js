@@ -26,7 +26,7 @@ const createATransaction = expressAsyncHandler( async(req,res,next) => {
 const listAllTransactions =  expressAsyncHandler( async (req,res,next)=>{
     try {
         const queryObject = {...req.query };
-        const excludedFields = ["page","sort","limit","offset","search"];
+        const excludedFields = ["page","sort","limit", "fields","search"];
         excludedFields.forEach((el)=>delete queryObject[el]);
         // let baseQuery = JSON.parse(queryObject);
         if(req.query.search){

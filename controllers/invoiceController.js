@@ -75,7 +75,7 @@ const updateAnInvoice = expressAsyncHandler(async (req, res, next) => {
 const getAllInvoices = expressAsyncHandler(async (req, res, next) => {
   try {
   const queryObject = { ...req.query };
-  const excludeFields = ["page", "sort", "limit", "offset", "fields","search"];
+  const excludeFields = ["page", "sort", "limit", "fields","search"];
   excludeFields.forEach((element) => delete queryObject[element]);
 
   let queryString = JSON.stringify(queryObject);
@@ -86,14 +86,19 @@ const getAllInvoices = expressAsyncHandler(async (req, res, next) => {
 
   if(req.query.search){
     const searchRegex = new RegExp(req.query.search,"i");
-    baseQuery.$or =[{ invoiceNumber:searchRegex},{invoiceCategory:searchRegex},{status:searchRegex} ]
+    baseQuery.$or =[
+      {invoiceNumber:searchRegex},
+      {invoiceCategory:searchRegex},
+      {status:searchRegex}
+     ]
   }
   if( userMakingRequest && userMakingRequest.role.name === "Admin"){
     query = Invoice.find({...baseQuery, isDeleted: false, deletedAt: null}).populate({path:"createdBy", select:"userName"}).populate({ path: "tenant", select: "firstName secondName" }).populate({ path: "property", select: "name" }).populate({ path: "unit", select: "unitNumber" });
   }else {
     query = Invoice.find({...baseQuery, isDeleted: false, deletedAt: null, createdBy:req.user._id}).populate({ path: "tenant", select: "firstName secondName" }).populate({ path: "property", select: "name" }).populate({ path: "unit", select: "unitNumber" });
   }
-  if (req.query.sort) {const sortBy = req.query.sort.split(",").join(" ");
+  if (req.query.sort) {
+    const sortBy = req.query.sort.split(",").join(" ");
     query = query.sort(sortBy);
   } else {
     query = query.sort("-createdAt");
@@ -104,14 +109,23 @@ const getAllInvoices = expressAsyncHandler(async (req, res, next) => {
   } else {
     query = query.select("-__v");
   }
-  const limit = parseInt(req.query.limit, 10) || 10;
-  const offset = parseInt(req.query.offset, 10) || 0;
-  query = query.skip(offset).limit(limit);
+
+  const page = parseInt(req.query.page) || 1
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page-1) * limit
+  query = query.skip(skip).limit(limit);
 
   const invoices = await query;
   const totalCount = await Invoice.countDocuments(query.getFilter());
   const totalPages = Math.ceil(totalCount/limit);
-  return res.status(200).json({ status: "SUCCESS", data: invoices , totalCount, totalPages, limit, offset});
+  return res.status(200).json({ 
+    status: "SUCCESS", 
+    data: invoices , 
+    totalCount, 
+    totalPages, 
+    limit, 
+    currentPage:page
+  });
 
    } catch (error) {
     logger.error(error)
